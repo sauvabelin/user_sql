@@ -16,7 +16,7 @@ class SymfonySha512 implements IPasswordAlgorithm
      */
     public function getVisibleName()
     {
-        return "symfony sha512";
+        return "NetBS Encoding";
     }
 
     /**
