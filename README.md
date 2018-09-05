@@ -1,6 +1,8 @@
 user_sql
 ========
 
+## This fork includes the hashing method used by Symfony for sha512.
+
 **Nextcloud SQL user authentication.**
 
 ![screenshot](https://github.com/nextcloud/user_sql/blob/develop/img/screenshot.png)
