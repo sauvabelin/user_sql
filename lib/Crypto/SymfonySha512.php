@@ -9,11 +9,6 @@ use Symfony\Component\Security\Core\Encoder\MessageDigestPasswordEncoder;
 class SymfonySha512 implements IPasswordAlgorithm
 {
     /**
-     * @var MessageDigestPasswordEncoder
-     */
-    private $encoder;
-
-    /**
      * Get the hash algorithm name.
      * This name is visible in the admin panel.
      *
@@ -47,15 +42,14 @@ class SymfonySha512 implements IPasswordAlgorithm
      */
     public function checkPassword($password, $dbHash)
     {
-        if(!$this->encoder)
-            $this->encoder = new MessageDigestPasswordEncoder('sha512', true, 5000);
+        $encoder    = new MessageDigestPasswordEncoder('sha512', true, 5000);
 
-        if(strlen($password) < 42)
+        if(strlen($password) < 40)
             return false;
 
-        $salt       = substr($dbHash, -40);
-        $password   = substr($dbHash, 0, strlen($password) - 40);
+        $salt       = substr($password, -40);
+        $password   = substr($password, 0, strlen($password) - 40);
 
-        return $this->encoder->isPasswordValid($dbHash, $password, $salt);
+        return $encoder->isPasswordValid($dbHash, $password, $salt);
     }
 }
