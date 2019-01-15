@@ -27,7 +27,7 @@ class SymfonySha512 implements IPasswordAlgorithm
      *
      * @return boolean True if the password was hashed successfully, false otherwise.
      */
-    public function getPasswordHash($password)
+    public function getPasswordHash($password, $salt = null)
     {
         return false;
     }
