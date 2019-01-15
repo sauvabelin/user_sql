@@ -40,16 +40,26 @@ class SymfonySha512 implements IPasswordAlgorithm
      *
      * @return boolean True if the password is correct, false otherwise.
      */
-    public function checkPassword($password, $dbHash)
+    public function checkPassword($password, $dbHash, $salt = null)
     {
         $encoder    = new MessageDigestPasswordEncoder('sha512', true, 5000);
 
+        /*
         if(strlen($password) < 40)
             return false;
 
         $salt       = substr($password, -40);
         $password   = substr($password, 0, strlen($password) - 40);
+        */
 
         return $encoder->isPasswordValid($dbHash, $password, $salt);
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function configuration()
+    {
+        return [];
     }
 }
