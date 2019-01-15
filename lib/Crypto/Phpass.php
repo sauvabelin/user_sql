@@ -50,7 +50,7 @@ class Phpass extends AbstractAlgorithm
     /**
      * @inheritdoc
      */
-    public function checkPassword($password, $dbHash)
+    public function checkPassword($password, $dbHash, $salt = null)
     {
         return hash_equals($dbHash, $this->crypt($password, $dbHash));
     }
@@ -61,7 +61,7 @@ class Phpass extends AbstractAlgorithm
      *
      * @return string|null Generated hash. Null on invalid settings.
      */
-    private function crypt($password, $setting)
+    protected function crypt($password, $setting)
     {
         $countLog2 = strpos(self::ITOA64, $setting[3]);
         if ($countLog2 < 7 || $countLog2 > 30) {
@@ -75,15 +75,27 @@ class Phpass extends AbstractAlgorithm
             return null;
         }
 
-        $hash = md5($salt . $password, true);
+        $hash = $this->hash($salt . $password);
         do {
-            $hash = md5($hash . $password, true);
+            $hash = $this->hash($hash . $password);
         } while (--$count);
 
         $output = substr($setting, 0, 12);
-        $output .= $this->encode64($hash, 16);
+        $output .= $this->encode64($hash, strlen($hash));
 
         return $output;
+    }
+
+    /**
+     * Apply hash function to input.
+     *
+     * @param string $input Input string.
+     *
+     * @return string Hashed input.
+     */
+    protected function hash($input)
+    {
+        return md5($input, true);
     }
 
     /**
@@ -124,7 +136,7 @@ class Phpass extends AbstractAlgorithm
     /**
      * @inheritdoc
      */
-    public function getPasswordHash($password)
+    public function getPasswordHash($password, $salt = null)
     {
         return $this->crypt($password, $this->genSalt());
     }
@@ -141,6 +153,14 @@ class Phpass extends AbstractAlgorithm
         $output .= $this->encode64(random_bytes(6), 6);
 
         return $output;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function configuration()
+    {
+        return [new CryptoParam("Iterations (log2)", 8, 4, 31)];
     }
 
     /**

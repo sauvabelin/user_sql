@@ -4,7 +4,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [4.0.1] - 2018-08-11
+## [4.3.0] - 2018-12-30
+### Added
+- Reverse active column option
+- Support for Nextcloud 16
+- Set default value for "provide avatar" option
+- Set hash algorithm parameters
+
+## [4.2.1] - 2018-12-22
+### Fixed
+- SQL error when same column names given in several tables
+
+## [4.2.0] - 2018-12-16
+### Added
+- Support for Nextcloud 15
+- Redmine, SHA-256, SHA-512 hash algorithms
+### Fixed
+- Loading user list when display name is null
+- Hide "password change form" when "Allow password change" not set
+### Changed
+- Append salt only when checked. Not by default
+
+## [4.1.0] - 2018-10-28
+### Added
+- Whirlpool hash algorithm
+- 'Prepend salt' toggle
+- Drupal 7 hash algorithm
+- 'Case-insensitive username' option
+### Fixed
+- Error when 'Display name' not set
+- Encoding of iteration for 'Extended DES (Crypt)'
+- 'Trying to get property of non-object' warning
+
+## [4.0.1] - 2018-08-16
 ### Fixed
 - Leftover lines break the admin page
 
@@ -87,6 +119,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Supported version of ownCloud, Nextcloud: ownCloud 10, Nextcloud 12
 
+[4.3.0]: https://github.com/nextcloud/user_sql/compare/v4.2.1...v4.3.0
+[4.2.1]: https://github.com/nextcloud/user_sql/compare/v4.2.0...v4.2.1
+[4.2.0]: https://github.com/nextcloud/user_sql/compare/v4.1.0...v4.2.0
+[4.1.0]: https://github.com/nextcloud/user_sql/compare/v4.0.1...v4.1.0
 [4.0.1]: https://github.com/nextcloud/user_sql/compare/v4.0.0...v4.0.1
 [4.0.0]: https://github.com/nextcloud/user_sql/compare/v4.0.0-rc2...v4.0.0
 [4.0.0-rc2]: https://github.com/nextcloud/user_sql/compare/v4.0.0-rc1...v4.0.0-rc2

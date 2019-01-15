@@ -19,43 +19,50 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace Tests\UserSQL\Crypto;
-
-use OCA\UserSQL\Crypto\Phpass;
-use OCA\UserSQL\Crypto\IPasswordAlgorithm;
-use OCP\IL10N;
-use Test\TestCase;
+namespace OCA\UserSQL\Crypto;
 
 /**
- * Unit tests for class <code>Phpass</code>.
+ * Drupal 7 overrides of phpass hash implementation.
  *
+ * @author BrandonKerr
  * @author Marcin Łojewski <dev@mlojewski.me>
  */
-class PhpassTest extends TestCase
+class Drupal7 extends Phpass
 {
     /**
-     * @var IPasswordAlgorithm
+     * The expected (and maximum) number of characters in a hashed password.
      */
-    private $crypto;
+    const DRUPAL_HASH_LENGTH = 55;
 
-    public function testCheckPassword()
+    /**
+     * @inheritdoc
+     */
+    public function configuration()
     {
-        $this->assertTrue(
-            $this->crypto->checkPassword(
-                "password", "\$P\$BxrwraqNTi4as0EI.IpiA/K.muk9ke/"
-            )
-        );
+        return [];
     }
 
-    public function testPasswordHash()
+    /**
+     * @inheritdoc
+     */
+    protected function crypt($password, $setting)
     {
-        $hash = $this->crypto->getPasswordHash("password");
-        $this->assertTrue($this->crypto->checkPassword("password", $hash));
+        return substr(parent::crypt($password, $setting), 0, self::DRUPAL_HASH_LENGTH);
     }
 
-    protected function setUp()
+    /**
+     * @inheritdoc
+     */
+    protected function hash($input)
     {
-        parent::setUp();
-        $this->crypto = new Phpass($this->createMock(IL10N::class));
+        return hash('sha512', $input, true);
+    }
+
+    /**
+     * @inheritdoc
+     */
+    protected function getAlgorithmName()
+    {
+        return "Drupal 7";
     }
 }

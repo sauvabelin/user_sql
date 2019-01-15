@@ -19,43 +19,45 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace Tests\UserSQL\Crypto;
-
-use OCA\UserSQL\Crypto\Phpass;
-use OCA\UserSQL\Crypto\IPasswordAlgorithm;
-use OCP\IL10N;
-use Test\TestCase;
+namespace OCA\UserSQL\Crypto;
 
 /**
- * Unit tests for class <code>Phpass</code>.
+ * A parameter of a hash algorithm.
  *
  * @author Marcin Łojewski <dev@mlojewski.me>
  */
-class PhpassTest extends TestCase
+class CryptoParam
 {
     /**
-     * @var IPasswordAlgorithm
+     * @var string Parameter name.
      */
-    private $crypto;
+    public $name;
+    /**
+     * @var int Parameter default value.
+     */
+    public $value;
+    /**
+     * @var int Minimal value for parameter.
+     */
+    public $min;
+    /**
+     * @var int Maximum value for parameter.
+     */
+    public $max;
 
-    public function testCheckPassword()
+    /**
+     * Class constructor.
+     *
+     * @param $name  string Parameter name.
+     * @param $value int Parameter default value.
+     * @param $min   int Minimal value for parameter.
+     * @param $max   int Maximum value for parameter.
+     */
+    public function __construct($name, $value, $min, $max)
     {
-        $this->assertTrue(
-            $this->crypto->checkPassword(
-                "password", "\$P\$BxrwraqNTi4as0EI.IpiA/K.muk9ke/"
-            )
-        );
-    }
-
-    public function testPasswordHash()
-    {
-        $hash = $this->crypto->getPasswordHash("password");
-        $this->assertTrue($this->crypto->checkPassword("password", $hash));
-    }
-
-    protected function setUp()
-    {
-        parent::setUp();
-        $this->crypto = new Phpass($this->createMock(IL10N::class));
+        $this->name = $name;
+        $this->value = $value;
+        $this->min = $min;
+        $this->max = $max;
     }
 }

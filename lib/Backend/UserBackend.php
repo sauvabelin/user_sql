@@ -21,6 +21,7 @@
 
 namespace OCA\UserSQL\Backend;
 
+use OC\User\Backend;
 use OCA\UserSQL\Action\EmailSync;
 use OCA\UserSQL\Action\IUserAction;
 use OCA\UserSQL\Action\QuotaSync;
@@ -263,6 +264,10 @@ final class UserBackend extends ABackend implements
             return false;
         }
 
+        if (is_null($user->name)) {
+            return false;
+        }
+
         $name = $user->name;
         $this->logger->debug(
             "Returning getDisplayName($uid): $name",
@@ -292,17 +297,17 @@ final class UserBackend extends ABackend implements
             return false;
         }
 
-        $user = $this->userRepository->findByUid($uid);
-        if (!($user instanceof User)) {
+        $caseSensitive = empty($this->properties[Opt::CASE_INSENSITIVE_USERNAME]);
+        $user = $this->userRepository->findByUid($uid, $caseSensitive);
+        if (!($user instanceof User) || ($caseSensitive && $user->uid !== $uid)) {
             return false;
         }
 
-        if ($user->salt !== null) {
-            $password .= $user->salt;
-        }
+        $uid = $user->uid;
+        $password = $this->addSalt($user, $password);
 
         $isCorrect = $passwordAlgorithm->checkPassword(
-            $password, $user->password
+            $password, $user->password, $user->salt
         );
 
         if ($user->active == false) {
@@ -338,7 +343,12 @@ final class UserBackend extends ABackend implements
     private function getPasswordAlgorithm()
     {
         $cryptoType = $this->properties[Opt::CRYPTO_CLASS];
-        $passwordAlgorithm = new $cryptoType($this->localization);
+        $cryptoParam0 = $this->properties[Opt::CRYPTO_PARAM_0];
+        $cryptoParam1 = $this->properties[Opt::CRYPTO_PARAM_1];
+        $cryptoParam2 = $this->properties[Opt::CRYPTO_PARAM_2];
+        $passwordAlgorithm = new $cryptoType(
+            $this->localization, $cryptoParam0, $cryptoParam1, $cryptoParam2
+        );
 
         if ($passwordAlgorithm === null) {
             $this->logger->error(
@@ -348,6 +358,27 @@ final class UserBackend extends ABackend implements
         }
 
         return $passwordAlgorithm;
+    }
+
+    /**
+     * Append or prepend salt from external column if available.
+     *
+     * @param User   $user     The user instance.
+     * @param string $password The password.
+     *
+     * @return string Salted password.
+     */
+    private function addSalt(User $user, string $password): string
+    {
+        if ($user->salt !== null) {
+            if (!empty($this->properties[Opt::APPEND_SALT])) {
+                return $password . $user->salt;
+            } elseif (!empty($this->properties[Opt::PREPEND_SALT])) {
+                return $user->salt . $password;
+            }
+        }
+
+        return $password;
     }
 
     /**
@@ -368,7 +399,9 @@ final class UserBackend extends ABackend implements
 
         $names = [];
         foreach ($users as $user) {
-            $names[$user->uid] = $user->name;
+            if (!is_null($user->name)) {
+                $names[$user] = $user->name;
+            }
         }
 
         $this->logger->debug(
@@ -457,9 +490,7 @@ final class UserBackend extends ABackend implements
             return false;
         }
 
-        if ($user->salt !== null) {
-            $password .= $user->salt;
-        }
+        $password = $this->addSalt($user, $password);
 
         $passwordHash = $passwordAlgorithm->getPasswordHash($password);
         if ($passwordHash === false) {
@@ -467,7 +498,7 @@ final class UserBackend extends ABackend implements
         }
 
         $user->password = $passwordHash;
-        $result = $this->userRepository->save($user);
+        $result = $this->userRepository->save($user, UserRepository::PASSWORD_FIELD);
 
         if ($result === true) {
             $this->logger->info(
@@ -529,7 +560,7 @@ final class UserBackend extends ABackend implements
         );
 
         if (empty($this->properties[DB::USER_AVATAR_COLUMN])) {
-            return false;
+            return !empty($this->properties[Opt::PROVIDE_AVATAR]);
         }
 
         $user = $this->userRepository->findByUid($uid);
@@ -571,7 +602,7 @@ final class UserBackend extends ABackend implements
         }
 
         $user->name = $displayName;
-        $result = $this->userRepository->save($user);
+        $result = $this->userRepository->save($user, UserRepository::DISPLAY_NAME_FIELD);
 
         if ($result === true) {
             $this->logger->info(
@@ -616,5 +647,17 @@ final class UserBackend extends ABackend implements
     public function deleteUser($uid)
     {
         return false;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function implementsActions($actions): bool
+    {
+        if ($actions & Backend::SET_PASSWORD) {
+            return !empty($this->properties[Opt::PASSWORD_CHANGE]);
+        }
+
+        return parent::implementsActions($actions);
     }
 }

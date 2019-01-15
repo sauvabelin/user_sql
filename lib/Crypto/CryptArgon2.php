@@ -81,7 +81,7 @@ class CryptArgon2 extends AbstractAlgorithm
     /**
      * @inheritdoc
      */
-    public function checkPassword($password, $dbHash)
+    public function checkPassword($password, $dbHash, $salt = null)
     {
         return password_verify($password, $dbHash);
     }
@@ -89,7 +89,7 @@ class CryptArgon2 extends AbstractAlgorithm
     /**
      * @inheritdoc
      */
-    public function getPasswordHash($password)
+    public function getPasswordHash($password, $salt = null)
     {
         return password_hash(
             $password, PASSWORD_ARGON2I, [
@@ -98,6 +98,23 @@ class CryptArgon2 extends AbstractAlgorithm
                 "threads" => $this->threads
             ]
         );
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function configuration()
+    {
+        return [
+            new CryptoParam(
+                "Memory cost (KiB)", PASSWORD_ARGON2_DEFAULT_MEMORY_COST, 1,
+                1048576
+            ),
+            new CryptoParam(
+                "Time cost", PASSWORD_ARGON2_DEFAULT_TIME_COST, 1, 1024
+            ),
+            new CryptoParam("Threads", PASSWORD_ARGON2_DEFAULT_THREADS, 1, 1024)
+        ];
     }
 
     /**
