@@ -399,7 +399,7 @@ final class UserBackend extends ABackend implements
 
         $names = [];
         foreach ($users as $user) {
-            if (!is_null($user->name)) {
+            if (is_object($user) && !is_null($user->name)) {
                 $names[$user] = $user->name;
             }
         }
