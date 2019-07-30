@@ -400,13 +400,13 @@ final class UserBackend extends ABackend implements
         $names = [];
         foreach ($users as $user) {
             if (is_object($user) && !is_null($user->name)) {
-                $names[$user] = $user->name;
+                $names[$user->uid] = $user->name;
             }
         }
-
+      
         $this->logger->debug(
             "Returning getDisplayNames($search, $limit, $offset): count("
-            . count($users) . ")", ["app" => $this->appName]
+            . count($names) . ") - ", ["app" => $this->appName]
         );
 
         return $names;
@@ -446,13 +446,13 @@ final class UserBackend extends ABackend implements
             $this->cache->set("user_" . $user->uid, $user);
         }
 
-        $users = array_map(
+        $usersCache = array_map(
             function ($user) {
                 return $user->uid;
             }, $users
         );
 
-        $this->cache->set($cacheKey, $users);
+        $this->cache->set($cacheKey, $usersCache);
         $this->logger->debug(
             "Returning getUsers($search, $limit, $offset): count(" . count(
                 $users
@@ -661,3 +661,5 @@ final class UserBackend extends ABackend implements
         return parent::implementsActions($actions);
     }
 }
+
+
