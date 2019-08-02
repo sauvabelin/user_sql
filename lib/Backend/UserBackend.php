@@ -395,7 +395,7 @@ final class UserBackend extends ABackend implements
             return false;
         }
 
-        $users = $this->getUsers($search, $limit, $offset);
+        $users = $this->internalGetUsers($search, $limit, $offset);
 
         $names = [];
         foreach ($users as $user) {
@@ -422,30 +422,8 @@ final class UserBackend extends ABackend implements
             ["app" => $this->appName]
         );
 
-        $cacheKey = self::class . "users_" . $search . "_" . $limit . "_"
-            . $offset;
-        $users = $this->cache->get($cacheKey);
 
-        if (!is_null($users)) {
-            $this->logger->debug(
-                "Returning from cache getUsers($search, $limit, $offset): count("
-                . count($users) . ")", ["app" => $this->appName]
-            );
-            return $users;
-        }
-
-        $users = $this->userRepository->findAllBySearchTerm(
-            "%" . $search . "%", $limit, $offset
-        );
-
-        if ($users === false) {
-            return [];
-        }
-
-        foreach ($users as $user) {
-            $this->cache->set("user_" . $user->uid, $user);
-        }
-
+        $users = $this->internalGetUsers($search, $limit, $offset);
         $users = array_map(
             function ($user) {
                 return $user->uid;
@@ -458,6 +436,23 @@ final class UserBackend extends ABackend implements
                 $users
             ) . ")", ["app" => $this->appName]
         );
+
+        return $users;
+    }
+      
+    private function internalGetUsers($search = "", $limit = null, $offset = null)
+    {
+        $users = $this->userRepository->findAllBySearchTerm(
+            "%" . $search . "%", $limit, $offset
+        );
+
+        if ($users === false) {
+            return [];
+        }
+
+        foreach ($users as $user) {
+            $this->cache->set("user_" . $user->uid, $user);
+        }
 
         return $users;
     }
@@ -661,5 +656,6 @@ final class UserBackend extends ABackend implements
         return parent::implementsActions($actions);
     }
 }
+
 
 
