@@ -687,4 +687,13 @@ final class UserBackend extends ABackend implements
 
         return parent::implementsActions($actions);
     }
+
+
+    /**
+     * @inheritdoc
+     */
+    public function canConfirmPassword(string $uid): bool
+    {
+        return true;
+    }
 }
