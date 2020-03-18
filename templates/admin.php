@@ -138,6 +138,7 @@ function print_select_options(
                 </div>
                 <fieldset id="opt-crypto_params_content" class="inner-fieldset" style="display: none"></fieldset>
                 <?php
+                print_select_options($l, "opt-name_sync", "Name sync", ["" => "None", "initial" => "Synchronise only once", "force_nc"=>"Nextcloud always wins", "force_sql"=>"SQL always wins"], $_["opt.name_sync"]);
                 print_select_options($l, "opt-email_sync", "Email sync", ["" => "None", "initial" => "Synchronise only once", "force_nc"=>"Nextcloud always wins", "force_sql"=>"SQL always wins"], $_["opt.email_sync"]);
                 print_select_options($l, "opt-quota_sync", "Quota sync", ["" => "None", "initial" => "Synchronise only once", "force_nc"=>"Nextcloud always wins", "force_sql"=>"SQL always wins"], $_["opt.quota_sync"]);
                 print_select_options($l, "opt-home_mode", "Home mode", ["" => "Default", "query" => "Query", "static" => "Static"], $_["opt.home_mode"]);
@@ -158,6 +159,7 @@ function print_select_options(
                 print_text_input($l, "db-table-user-column-password", "Password", $_["db.table.user.column.password"]);
                 print_text_input($l, "db-table-user-column-name", "Display name", $_["db.table.user.column.name"]);
                 print_text_input($l, "db-table-user-column-active", "Active", $_["db.table.user.column.active"]);
+                print_text_input($l, "db-table-user-column-disabled", "Disabled", $_["db.table.user.column.disabled"]);
                 print_text_input($l, "db-table-user-column-avatar", "Provide avatar", $_["db.table.user.column.avatar"]);
                 print_text_input($l, "db-table-user-column-salt", "Salt", $_["db.table.user.column.salt"]); ?>
                 <div class="inner-fieldset">

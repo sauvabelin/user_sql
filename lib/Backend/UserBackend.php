@@ -24,6 +24,7 @@ namespace OCA\UserSQL\Backend;
 use OC\User\Backend;
 use OCA\UserSQL\Action\EmailSync;
 use OCA\UserSQL\Action\IUserAction;
+use OCA\UserSQL\Action\NameSync;
 use OCA\UserSQL\Action\QuotaSync;
 use OCA\UserSQL\Cache;
 use OCA\UserSQL\Constant\App;
@@ -41,9 +42,12 @@ use OCP\User\Backend\ICheckPasswordBackend;
 use OCP\User\Backend\ICountUsersBackend;
 use OCP\User\Backend\IGetDisplayNameBackend;
 use OCP\User\Backend\IGetHomeBackend;
+use OCP\User\Backend\IPasswordConfirmationBackend;
 use OCP\User\Backend\IProvideAvatarBackend;
 use OCP\User\Backend\ISetDisplayNameBackend;
 use OCP\User\Backend\ISetPasswordBackend;
+use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\EventDispatcher\GenericEvent;
 
 /**
  * The SQL user backend manager.
@@ -55,6 +59,7 @@ final class UserBackend extends ABackend implements
     ICountUsersBackend,
     IGetDisplayNameBackend,
     IGetHomeBackend,
+    IPasswordConfirmationBackend,
     IProvideAvatarBackend,
     ISetDisplayNameBackend,
     ISetPasswordBackend
@@ -88,6 +93,10 @@ final class UserBackend extends ABackend implements
      */
     private $config;
     /**
+     * @var EventDispatcher The event dispatcher.
+     */
+    private $eventDispatcher;
+    /**
      * @var IUserAction[] The actions to execute.
      */
     private $actions;
@@ -95,17 +104,19 @@ final class UserBackend extends ABackend implements
     /**
      * The default constructor.
      *
-     * @param string         $AppName        The application name.
-     * @param Cache          $cache          The cache instance.
-     * @param ILogger        $logger         The logger instance.
-     * @param Properties     $properties     The properties array.
-     * @param UserRepository $userRepository The user repository.
-     * @param IL10N          $localization   The localization service.
-     * @param IConfig        $config         The config instance.
+     * @param string          $AppName         The application name.
+     * @param Cache           $cache           The cache instance.
+     * @param ILogger         $logger          The logger instance.
+     * @param Properties      $properties      The properties array.
+     * @param UserRepository  $userRepository  The user repository.
+     * @param IL10N           $localization    The localization service.
+     * @param IConfig         $config          The config instance.
+     * @param EventDispatcher $eventDispatcher The event dispatcher.
      */
     public function __construct(
         $AppName, Cache $cache, ILogger $logger, Properties $properties,
-        UserRepository $userRepository, IL10N $localization, IConfig $config
+        UserRepository $userRepository, IL10N $localization, IConfig $config,
+        EventDispatcher $eventDispatcher
     ) {
         $this->appName = $AppName;
         $this->cache = $cache;
@@ -114,6 +125,7 @@ final class UserBackend extends ABackend implements
         $this->userRepository = $userRepository;
         $this->localization = $localization;
         $this->config = $config;
+        $this->eventDispatcher = $eventDispatcher;
         $this->actions = [];
 
         $this->initActions();
@@ -136,6 +148,14 @@ final class UserBackend extends ABackend implements
             && !empty($this->properties[DB::USER_QUOTA_COLUMN])
         ) {
             $this->actions[] = new QuotaSync(
+                $this->appName, $this->logger, $this->properties, $this->config,
+                $this->userRepository
+            );
+        }
+        if (!empty($this->properties[Opt::NAME_SYNC])
+            && !empty($this->properties[DB::USER_NAME_COLUMN])
+        ) {
+            $this->actions[] = new NameSync(
                 $this->appName, $this->logger, $this->properties, $this->config,
                 $this->userRepository
             );
@@ -391,11 +411,11 @@ final class UserBackend extends ABackend implements
             ["app" => $this->appName]
         );
 
-        if (empty($this->properties[DB::USER_NAME_COLUMN])) {
-            return false;
+        $users = $this->getUsers(
+            $search, $limit, $offset, function ($user) {
+            return $user;
         }
-
-        $users = $this->internalGetUsers($search, $limit, $offset);
+        );
 
         $names = [];
         foreach ($users as $user) {
@@ -403,10 +423,10 @@ final class UserBackend extends ABackend implements
                 $names[$user->uid] = $user->name;
             }
         }
-      
+
         $this->logger->debug(
             "Returning getDisplayNames($search, $limit, $offset): count("
-            . count($names) . ") - ", ["app" => $this->appName]
+            . count($users) . ")", ["app" => $this->appName]
         );
 
         return $names;
@@ -415,33 +435,25 @@ final class UserBackend extends ABackend implements
     /**
      * @inheritdoc
      */
-    public function getUsers($search = "", $limit = null, $offset = null)
+    public function getUsers($search = "", $limit = null, $offset = null, $callback = null)
     {
         $this->logger->debug(
             "Entering getUsers($search, $limit, $offset)",
             ["app" => $this->appName]
         );
 
+        $cacheKey = self::class . "users_" . $search . "_" . $limit . "_"
+            . $offset;
+        $users = $this->cache->get($cacheKey);
 
-        $users = $this->internalGetUsers($search, $limit, $offset);
-        $users = array_map(
-            function ($user) {
-                return $user->uid;
-            }, $users
-        );
+        if (!is_null($users)) {
+            $this->logger->debug(
+                "Returning from cache getUsers($search, $limit, $offset): count("
+                . count($users) . ")", ["app" => $this->appName]
+            );
+            return $users;
+        }
 
-        $this->cache->set($cacheKey, $users);
-        $this->logger->debug(
-            "Returning getUsers($search, $limit, $offset): count(" . count(
-                $users
-            ) . ")", ["app" => $this->appName]
-        );
-
-        return $users;
-    }
-      
-    private function internalGetUsers($search = "", $limit = null, $offset = null)
-    {
         $users = $this->userRepository->findAllBySearchTerm(
             "%" . $search . "%", $limit, $offset
         );
@@ -453,6 +465,21 @@ final class UserBackend extends ABackend implements
         foreach ($users as $user) {
             $this->cache->set("user_" . $user->uid, $user);
         }
+
+        $callback = is_callable($callback)
+            ? $callback
+            : function ($user) {
+                return $user->uid;
+            };
+        $users = array_map($callback, $users);
+
+        $this->cache->set($cacheKey, $users);
+        $this->logger->debug(
+            "Returning getUsers($search, $limit, $offset): count("
+            . count(
+                $users
+            ) . ")", ["app" => $this->appName]
+        );
 
         return $users;
     }
@@ -479,6 +506,11 @@ final class UserBackend extends ABackend implements
         if ($passwordAlgorithm === false) {
             return false;
         }
+
+        $event = new GenericEvent($password);
+        $this->eventDispatcher->dispatch(
+            'OCP\PasswordPolicy::validate', $event
+        );
 
         $user = $this->userRepository->findByUid($uid);
         if (!($user instanceof User)) {
@@ -656,6 +688,3 @@ final class UserBackend extends ABackend implements
         return parent::implementsActions($actions);
     }
 }
-
-
-

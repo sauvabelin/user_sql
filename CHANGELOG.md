@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [4.4.1] - 2020-02-02
+### Fixed
+- Issue generating 'Object of class Closure could not be converted to string' log message
+
+## [4.4.0] - 2019-10-09
+### Added
+- Users can confirm passwords
+- Support Nextcloud password_policy
+- Support for Nextcloud 18
+- Name sync option
+
+### Fixed
+- Getting user display names backend
+- Do not include users which are disabled
+
+### Changed
+- Extend user/group search
+
 ## [4.3.0] - 2018-12-30
 ### Added
 - Reverse active column option
@@ -19,9 +37,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Support for Nextcloud 15
 - Redmine, SHA-256, SHA-512 hash algorithms
+
 ### Fixed
 - Loading user list when display name is null
 - Hide "password change form" when "Allow password change" not set
+
 ### Changed
 - Append salt only when checked. Not by default
 
@@ -31,6 +51,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - 'Prepend salt' toggle
 - Drupal 7 hash algorithm
 - 'Case-insensitive username' option
+
 ### Fixed
 - Error when 'Display name' not set
 - Encoding of iteration for 'Extended DES (Crypt)'
@@ -51,8 +72,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Example SQL script in README file
 - Fixed misspelling
-
-### Changed
 - Support for Nextcloud 14 only
 - Group backend implementation
 - User backend implementation
@@ -119,6 +138,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Supported version of ownCloud, Nextcloud: ownCloud 10, Nextcloud 12
 
+[4.4.1]: https://github.com/nextcloud/user_sql/compare/v4.4.0...v4.4.1
+[4.4.0]: https://github.com/nextcloud/user_sql/compare/v4.3.0...v4.4.0
 [4.3.0]: https://github.com/nextcloud/user_sql/compare/v4.2.1...v4.3.0
 [4.2.1]: https://github.com/nextcloud/user_sql/compare/v4.2.0...v4.2.1
 [4.2.0]: https://github.com/nextcloud/user_sql/compare/v4.1.0...v4.2.0
