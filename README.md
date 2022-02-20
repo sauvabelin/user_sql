@@ -42,6 +42,10 @@ Name | Description | Details
 **Database** | The name of the database. | Mandatory.
 **Username** | The name of the user for the connection. | Optional.
 **Password** | The password of the user for the connection. | Optional.
+**SSL CA** | The file path to the SSL certificate authority (relative to Nextcloud serverroot) | Optional.<br/>Requires: SQL driver *mysql*.
+**SSL Certificate** | The file path to the SSL certificate (relative to Nextcloud serverroot) | Optional.<br/>Requires: SQL driver *mysql*.
+**SSL Key** | The file path to the SSL key (relative to Nextcloud serverroot) | Optional.<br/>Requires: SQL driver *mysql*.
+**System wide values** | Place where database connection parameters are stored.<br/>- *true* - config.php (System wide values).<br/>- *false* - database (App values). | Optional.<br/>Default: *false*.
 
 #### Options
 
@@ -49,18 +53,20 @@ Here are all currently supported options.
 
 Name | Description | Details
 --- | --- | ---
-**Allow display name change** | With this option enabled user can change its display name. The display name change is propagated to the database. | Optional.<br/>Default: false.<br/>Requires: user *Display name* column.
-**Allow password change** | Can user change its password. The password change is propagated to the database. See [Hash algorithms](#hash-algorithms). | Optional.<br/>Default: false.
-**Allow providing avatar** | Can user provide its avatar. The value is used when column *Provide avatar* is not set. | Optional.<br/>Default: false.
-**Case-insensitive username** | Whether user query should be case-sensitive or case-insensitive. | Optional.<br/>Default: false.
-**Reverse active column** | Reverse value of active column in user table. | Optional.<br/>Default: false.
-**Use cache** | Use database query results cache. The cache can be cleared any time with the *Clear cache* button click. | Optional.<br/>Default: false.
+**Allow display name change** | With this option enabled user can change its display name. The display name change is propagated to the database. | Optional.<br/>Default: *false*.<br/>Requires: user *Display name* column.
+**Allow email login** | User input at login is considered to be either UID or email. | Optional.<br/>Default: *false*.<br/>Requires: user *Email* column.
+**Allow password change** | Can user change its password. The password change is propagated to the database. See [Hash algorithms](#hash-algorithms). | Optional.<br/>Default: *false*.
+**Allow providing avatar** | Can user provide its avatar. The value is used when column *Provide avatar* is not set. | Optional.<br/>Default: *false*.
+**Case-insensitive username** | Whether user query should be case-sensitive or case-insensitive. | Optional.<br/>Default: *false*.
+**Reverse active column** | Reverse value of active column in user table. | Optional.<br/>Default: *false*.
+**Use cache** | Use database query results cache. The cache can be cleared any time with the *Clear cache* button click. | Optional.<br/>Default: *false*.
 **Hash algorithm** | How users passwords are stored in the database. See [Hash algorithms](#hash-algorithms). | Mandatory.
 **Name sync** | Sync display name with the Nextcloud.<br/>- *None* - Disables this feature. This is the default option.<br/>- *Synchronise only once* - Copy the display name to the Nextcloud preferences if its not set.<br/>- *Nextcloud always wins* - Always copy the display name to the database. This updates the user table.<br/>- *SQL always wins* - Always copy the display name to the Nextcloud preferences. | Optional.<br/>Default: *None*.<br/>Requires: user *Display name* column.
 **Email sync** | Sync e-mail address with the Nextcloud.<br/>- *None* - Disables this feature. This is the default option.<br/>- *Synchronise only once* - Copy the e-mail address to the Nextcloud preferences if its not set.<br/>- *Nextcloud always wins* - Always copy the e-mail address to the database. This updates the user table.<br/>- *SQL always wins* - Always copy the e-mail address to the Nextcloud preferences. | Optional.<br/>Default: *None*.<br/>Requires: user *Email* column.
 **Quota sync** | Sync user quota with the Nextcloud.<br/>- *None* - Disables this feature. This is the default option.<br/>- *Synchronise only once* - Copy the user quota to the Nextcloud preferences if its not set.<br/>- *Nextcloud always wins* - Always copy the user quota to the database. This updates the user table.<br/>- *SQL always wins* - Always copy the user quota to the Nextcloud preferences. | Optional.<br/>Default: *None*.<br/>Requires: user *Quota* column.
 **Home mode** | User storage path.<br/>- *Default* - Let the Nextcloud manage this. The default option.<br/>- *Query* - Use location from the user table pointed by the *home* column.<br/>- *Static* - Use static location pointed by the *Home Location* option. | Optional<br/>Default: *Default*.
-**Home Location** | User storage path for the `Static` *Home mode*. The `%u` variable is replaced with the username of the user. | Mandatory if the *Home mode* is set to `Static`.
+**Home location** | User storage path for the `Static` *Home mode*. The `%u` variable is replaced with the username of the user. | Mandatory if the *Home mode* is set to `Static`.
+**Default group** | Default group for all 'User SQL' users. | Optional.
 
 #### User table
 
@@ -69,18 +75,19 @@ The definition of user table. The table containing user accounts.
 Name | Description | Details
 --- | --- | ---
 **Table name** | The table name. | Mandatory for user backend.
-**Username** | Username column. | Mandatory for user backend.
+**UID** | User ID column. | Mandatory for user backend.
+**Username** | Username column. | Optional.
 **Email** | E-mail column. | Mandatory for *Email sync* option.
 **Quota** | Quota column. | Mandatory for *Quota sync* option.
 **Home** | Home path column. | Mandatory for `Query` *Home sync* option.
 **Password** | Password hash column. | Mandatory for user backend.
 **Display name** | Display name column. | Optional.
 **Active** | Flag indicating if user can log in. | Optional.<br/>Default: true.
-**Disabled** | Flag indicating if user should not be visible (not included in searches). | Optional.<br/>Default: false.
-**Provide avatar** | Flag indicating if user can change its avatar. | Optional.<br/>Default: false.
+**Disabled** | Flag indicating if user should not be visible (not included in searches). | Optional.<br/>Default: *false*.
+**Provide avatar** | Flag indicating if user can change its avatar. | Optional.<br/>Default: *false*.
 **Salt** | Salt which is appended to password when checking or changing the password. | Optional.
-**Append salt** | Append a salt to the password. | Optional.<br/>Default: false.
-**Prepend salt** | Prepend a salt to the password. | Optional.<br/>Default: false.
+**Append salt** | Append a salt to the password. | Optional.<br/>Default: *false*.
+**Prepend salt** | Prepend a salt to the password. | Optional.<br/>Default: *false*.
 
 #### Group table
 
@@ -89,9 +96,9 @@ The group definitions table.
 Name | Description | Details
 --- | --- | ---
 **Table name** | The table name. | Mandatory for group backend.
-**Is admin** | Flag indicating if its the admin group | Optional.
+**GID** | Group ID column. | Mandatory for group backend.
 **Display name** | Display name column. | Optional.
-**Group name** | Group name column. | Mandatory for group backend.
+**Is admin** | Flag indicating if its the admin group | Optional.
 
 #### User group table
 
@@ -100,8 +107,8 @@ Associative table which maps users to groups.
 Name | Description | Details
 --- | --- | ---
 **Table name** | The table name. | Mandatory for group backend.
-**Username** | Username column. | Mandatory for group backend.
-**Group name** | Group name column. | Mandatory for group backend.
+**UID** | User ID column. | Mandatory for group backend.
+**GID** | Group ID column. | Mandatory for group backend.
 
 ## Integrations
 
@@ -119,7 +126,8 @@ If you don't have any database model yet you can use below tables (MySQL):
 ```
 CREATE TABLE sql_user
 (
-  username       VARCHAR(16) PRIMARY KEY,
+  uid            INT         PRIMARY KEY AUTO_INCREMENT,
+  username       VARCHAR(16) NOT NULL UNIQUE,
   display_name   TEXT        NULL,
   email          TEXT        NULL,
   quota          TEXT        NULL,
@@ -133,20 +141,20 @@ CREATE TABLE sql_user
 
 CREATE TABLE sql_group
 (
-  name         VARCHAR(16) PRIMARY KEY,
-  display_name TEXT        NULL,
-  admin        BOOLEAN     NOT NULL DEFAULT FALSE
+  gid   INT         PRIMARY KEY AUTO_INCREMENT,
+  name  VARCHAR(16) NOT NULL UNIQUE,
+  admin BOOLEAN     NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE sql_user_group
 (
-  username   VARCHAR(16) NOT NULL,
-  group_name VARCHAR(16) NOT NULL,
-  PRIMARY KEY (username, group_name),
-  FOREIGN KEY (username) REFERENCES sql_user (username),
-  FOREIGN KEY (group_name) REFERENCES sql_group (name),
-  INDEX sql_user_group_username_idx (username),
-  INDEX sql_user_group_group_name_idx (group_name)
+  uid INT NOT NULL,
+  gid INT NOT NULL,
+  PRIMARY KEY (uid, gid),
+  FOREIGN KEY (uid) REFERENCES sql_user (uid),
+  FOREIGN KEY (gid) REFERENCES sql_group (gid),
+  INDEX user_group_username_idx (uid),
+  INDEX user_group_group_name_idx (gid)
 );
 ```
 
@@ -193,9 +201,11 @@ Courier hexadecimal MD5 | No salt supported. | {MD5}X03MO1qnZdYdgyfeuILPmQ==
 Courier base64-encoded SHA1 | No salt supported. | {SHA}W6ph5Mm5Pz8GgiULbPgzG37mj9g=
 Courier base64-encoded SHA256 | No salt supported. | {SHA256}XohImNooBHFR0OVvjcYpJ3NgPQ1qq73WKhHvch0VQtg=
 Unix (Crypt) | See [crypt](http://php.net/manual/en/function.crypt.php). | $2y$10$5rsN1fmoSkaRy9bqhozAXOr0mn0QiVIfd2L04Bbk1Go9MjdvotwBq
-Argon2 (Crypt) | Requires PHP >= 7.2. See [password_hash](http://php.net/manual/en/function.password-hash.php). | $argon2i$v=19$m=1024,t=2,p=2$NnpSNlRNLlZobnJHUDh0Sw$oW5E1cfdPzLWfkTvQFUyzTR00R0aLwEdYwldcqW6Pmo
+Argon2i (Crypt) | Requires PHP >= 7.2. See [password_hash](http://php.net/manual/en/function.password-hash.php). | $argon2i$v=19$m=1024,t=2,p=2$NnpSNlRNLlZobnJHUDh0Sw$oW5E1cfdPzLWfkTvQFUyzTR00R0aLwEdYwldcqW6Pmo
+Argon2id (Crypt) | Requires PHP >= 7.2. See [password_hash](http://php.net/manual/en/function.password-hash.php). | $argon2id$v=19$m=65536,t=4,p=1$eWhTd3huemlhNGFkWTVSSQ$BjSh9PINc9df9WU1zppBsYJKvkwUEYHYNUUMTj+QGPw
 Blowfish (Crypt) | See [password_hash](http://php.net/manual/en/function.password-hash.php). | $2y$10$5rsN1fmoSkaRy9bqhozAXOr0mn0QiVIfd2L04Bbk1Go9MjdvotwBq
 Extended DES (Crypt) | | cDRpdxPmHpzS.
+Hash HMAC | See [hash_hmac](https://www.php.net/manual/en/function.hash-hmac.php). | ba4f8624f0a4d1f2a3991f4d88cd9afb604dac20
 MD5 (Crypt) | | $1$RzaFbNcU$u9adfTY/Q6za6nu0Ogrl1/
 SHA256 (Crypt) | | $5$rounds=5000$VIYD0iHkg7uY9SRc$v2XLS/9dvfFN84mzGvW9wxnVt9Xd/urXaaTkpW8EwD1
 SHA512 (Crypt) | | $6$rounds=5000$yH.Q0OL4qbCOUJ3q$Xry5EVFva3wKnfo8/ktrugmBd8tcl34NK6rXInv1HhmdSUNLEm0La9JnA57rqwQ.9/Bz513MD4tvmmISLUIHs/
@@ -243,3 +253,4 @@ Since version 4.0.0 the whole core implementation has been rewritten.
   * Andreas Boehler for releasing the first version of this application
   * Johan Hendriks provided his user_postfixadmin
   * Ed Wildgoose for fixing possible SQL injection vulnerability
+  * Brandon Lee for implementing feature to separate uid from username resolving issues #108 & #121

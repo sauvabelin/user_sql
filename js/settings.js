@@ -76,15 +76,41 @@ user_sql.adminSettingsUI = function () {
                                 var param = $("<div></div>");
                                 var label = $("<label></label>").attr({for: "opt-crypto_param_" + index});
                                 var title = $("<span></span>").text(data.data[index]["name"]);
-                                var input = $("<input/>").attr({
-                                    type: "number",
-                                    id: "opt-crypto_param_" + index,
-                                    name: "opt-crypto_param_" + index,
-                                    step: 1,
-                                    min: data.data[index]["min"],
-                                    max: data.data[index]["max"],
-                                    value: data.data[index]["value"]
-                                });
+
+                                var input = null;
+                                switch (data.data[index]["type"]) {
+                                    case "choice":
+                                        input = $("<select/>").attr({
+                                            id: "opt-crypto_param_" + index,
+                                            name: "opt-crypto_param_" + index,
+                                        });
+                                        data.data[index]["choices"].forEach(
+                                            function (item) {
+                                                if (data.data[index]["value"] === item) {
+                                                    input.append($("<option/>").attr({
+                                                        value: item,
+                                                        selected: "selected"
+                                                    }).text(item));
+                                                } else {
+                                                    input.append($("<option/>").attr({value: item}).text(item));
+                                                }
+                                            }
+                                        );
+                                        break;
+                                    case "int":
+                                        input = $("<input/>").attr({
+                                            type: "number",
+                                            id: "opt-crypto_param_" + index,
+                                            name: "opt-crypto_param_" + index,
+                                            step: 1,
+                                            min: data.data[index]["min"],
+                                            max: data.data[index]["max"],
+                                            value: data.data[index]["value"]
+                                        });
+                                        break;
+                                    default:
+                                        break;
+                                }
 
                                 label.append(title);
                                 param.append(label);
@@ -100,6 +126,21 @@ user_sql.adminSettingsUI = function () {
             });
             cryptoChanged();
         };
+
+        $("#db-driver").change(function () {
+            var ssl_ca = $("#db-ssl_ca").parent().parent();
+            var ssl_cert = $("#db-ssl_cert").parent().parent();
+            var ssl_key = $("#db-ssl_key").parent().parent();
+            if ($("#db-driver").val() === 'mysql') {
+                ssl_ca.show();
+                ssl_cert.show();
+                ssl_key.show();
+            } else {
+                ssl_ca.hide();
+                ssl_cert.hide();
+                ssl_key.hide();
+            }
+        });
 
         $("#user_sql-db_connection_verify").click(function (event) {
             return click(event, "/apps/user_sql/settings/db/verify");
@@ -119,7 +160,7 @@ user_sql.adminSettingsUI = function () {
         );
 
         autocomplete(
-            "#db-table-user-column-uid, #db-table-user-column-email, #db-table-user-column-quota, #db-table-user-column-home, #db-table-user-column-password, #db-table-user-column-name, #db-table-user-column-active, #db-table-user-column-disabled, #db-table-user-column-avatar, #db-table-user-column-salt",
+            "#db-table-user-column-uid, #db-table-user-column-username, #db-table-user-column-email, #db-table-user-column-quota, #db-table-user-column-home, #db-table-user-column-password, #db-table-user-column-name, #db-table-user-column-active, #db-table-user-column-disabled, #db-table-user-column-avatar, #db-table-user-column-salt",
             "/apps/user_sql/settings/autocomplete/table/user"
         );
 

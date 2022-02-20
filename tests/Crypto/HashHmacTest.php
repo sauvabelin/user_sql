@@ -2,7 +2,7 @@
 /**
  * Nextcloud - user_sql
  *
- * @copyright 2018 Marcin Łojewski <dev@mlojewski.me>
+ * @copyright 2020 Marcin Łojewski <dev@mlojewski.me>
  * @author    Marcin Łojewski <dev@mlojewski.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -21,17 +21,17 @@
 
 namespace Tests\UserSQL\Crypto;
 
+use OCA\UserSQL\Crypto\HashHmac;
 use OCA\UserSQL\Crypto\IPasswordAlgorithm;
-use OCA\UserSQL\Crypto\Redmine;
 use OCP\IL10N;
 use Test\TestCase;
 
 /**
- * Unit tests for class <code>Redmine</code>.
+ * Unit tests for class <code>HashHmac</code>.
  *
  * @author Marcin Łojewski <dev@mlojewski.me>
  */
-class RedmineTest extends TestCase
+class HashHmacTest extends TestCase
 {
     /**
      * @var IPasswordAlgorithm
@@ -40,22 +40,18 @@ class RedmineTest extends TestCase
 
     public function testCheckPassword()
     {
-        $this->assertTrue(
-            $this->crypto->checkPassword(
-                "password", "48b75edeffd8e413341d7734f0f3391e7a5da994", "salt"
-            )
-        );
+        $this->assertTrue($this->crypto->checkPassword("password", "ba4f8624f0a4d1f2a3991f4d88cd9afb604dac20"));
     }
 
     public function testPasswordHash()
     {
-        $hash = $this->crypto->getPasswordHash("password", "salt");
-        $this->assertTrue($this->crypto->checkPassword("password", $hash, "salt"));
+        $hash = $this->crypto->getPasswordHash("password");
+        $this->assertTrue($this->crypto->checkPassword("password", $hash));
     }
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->crypto = new Redmine($this->createMock(IL10N::class));
+        $this->crypto = new HashHmac($this->createMock(IL10N::class));
     }
 }

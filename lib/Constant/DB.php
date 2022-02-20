@@ -2,7 +2,7 @@
 /**
  * Nextcloud - user_sql
  *
- * @copyright 2018 Marcin Łojewski <dev@mlojewski.me>
+ * @copyright 2020 Marcin Łojewski <dev@mlojewski.me>
  * @author    Marcin Łojewski <dev@mlojewski.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -32,6 +32,9 @@ final class DB
     const DRIVER = "db.driver";
     const HOSTNAME = "db.hostname";
     const PASSWORD = "db.password";
+    const SSL_CA = "db.ssl_ca";
+    const SSL_CERT = "db.ssl_cert";
+    const SSL_KEY = "db.ssl_key";
     const USERNAME = "db.username";
 
     const GROUP_TABLE = "db.table.group";
@@ -55,4 +58,5 @@ final class DB
     const USER_QUOTA_COLUMN = "db.table.user.column.quota";
     const USER_SALT_COLUMN = "db.table.user.column.salt";
     const USER_UID_COLUMN = "db.table.user.column.uid";
+    const USER_USERNAME_COLUMN = "db.table.user.column.username";
 }

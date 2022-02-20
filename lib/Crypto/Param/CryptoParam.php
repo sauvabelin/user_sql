@@ -2,7 +2,7 @@
 /**
  * Nextcloud - user_sql
  *
- * @copyright 2018 Marcin Łojewski <dev@mlojewski.me>
+ * @copyright 2020 Marcin Łojewski <dev@mlojewski.me>
  * @author    Marcin Łojewski <dev@mlojewski.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -19,43 +19,39 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace Tests\UserSQL\Crypto;
-
-use OCA\UserSQL\Crypto\MD5;
-use OCA\UserSQL\Crypto\IPasswordAlgorithm;
-use OCP\IL10N;
-use Test\TestCase;
+namespace OCA\UserSQL\Crypto\Param;
 
 /**
- * Unit tests for class <code>MD5</code>.
+ * A parameter of a hash algorithm.
  *
  * @author Marcin Łojewski <dev@mlojewski.me>
  */
-class MD5Test extends TestCase
+class CryptoParam
 {
     /**
-     * @var IPasswordAlgorithm
+     * @var string Type name used in JS.
      */
-    private $crypto;
+    public $type;
+    /**
+     * @var string Parameter name.
+     */
+    public $name;
+    /**
+     * @var mixed Parameter default value.
+     */
+    public $value;
 
-    public function testCheckPassword()
+    /**
+     * Class constructor.
+     *
+     * @param $type  string Type name used in JS.
+     * @param $name  string Parameter name.
+     * @param $value mixed Parameter default value.
+     */
+    public function __construct($type, $name, $value = null)
     {
-        $this->assertTrue(
-            $this->crypto->checkPassword(
-                "password", "5f4dcc3b5aa765d61d8327deb882cf99"
-            )
-        );
-    }
-
-    public function testPasswordHash()
-    {
-        $hash = $this->crypto->getPasswordHash("password");
-        $this->assertTrue($this->crypto->checkPassword("password", $hash));
-    }
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->crypto = new MD5($this->createMock(IL10N::class));
+        $this->type = $type;
+        $this->name = $name;
+        $this->value = $value;
     }
 }

@@ -2,7 +2,7 @@
 /**
  * Nextcloud - user_sql
  *
- * @copyright 2018 Marcin Łojewski <dev@mlojewski.me>
+ * @copyright 2020 Marcin Łojewski <dev@mlojewski.me>
  * @author    Marcin Łojewski <dev@mlojewski.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -34,9 +34,11 @@ use OCA\UserSQL\Crypto\IPasswordAlgorithm;
 use OCA\UserSQL\Model\User;
 use OCA\UserSQL\Properties;
 use OCA\UserSQL\Repository\UserRepository;
+use OCP\EventDispatcher\IEventDispatcher;
 use OCP\IConfig;
 use OCP\IL10N;
 use OCP\ILogger;
+use OCP\Security\Events\ValidatePasswordPolicyEvent;
 use OCP\User\Backend\ABackend;
 use OCP\User\Backend\ICheckPasswordBackend;
 use OCP\User\Backend\ICountUsersBackend;
@@ -46,8 +48,6 @@ use OCP\User\Backend\IPasswordConfirmationBackend;
 use OCP\User\Backend\IProvideAvatarBackend;
 use OCP\User\Backend\ISetDisplayNameBackend;
 use OCP\User\Backend\ISetPasswordBackend;
-use Symfony\Component\EventDispatcher\EventDispatcher;
-use Symfony\Component\EventDispatcher\GenericEvent;
 
 /**
  * The SQL user backend manager.
@@ -93,7 +93,7 @@ final class UserBackend extends ABackend implements
      */
     private $config;
     /**
-     * @var EventDispatcher The event dispatcher.
+     * @var IEventDispatcher The event dispatcher.
      */
     private $eventDispatcher;
     /**
@@ -104,19 +104,19 @@ final class UserBackend extends ABackend implements
     /**
      * The default constructor.
      *
-     * @param string          $AppName         The application name.
-     * @param Cache           $cache           The cache instance.
-     * @param ILogger         $logger          The logger instance.
-     * @param Properties      $properties      The properties array.
-     * @param UserRepository  $userRepository  The user repository.
-     * @param IL10N           $localization    The localization service.
-     * @param IConfig         $config          The config instance.
-     * @param EventDispatcher $eventDispatcher The event dispatcher.
+     * @param string           $AppName         The application name.
+     * @param Cache            $cache           The cache instance.
+     * @param ILogger          $logger          The logger instance.
+     * @param Properties       $properties      The properties array.
+     * @param UserRepository   $userRepository  The user repository.
+     * @param IL10N            $localization    The localization service.
+     * @param IConfig          $config          The config instance.
+     * @param IEventDispatcher $eventDispatcher The event dispatcher.
      */
     public function __construct(
         $AppName, Cache $cache, ILogger $logger, Properties $properties,
         UserRepository $userRepository, IL10N $localization, IConfig $config,
-        EventDispatcher $eventDispatcher
+        IEventDispatcher $eventDispatcher
     ) {
         $this->appName = $AppName;
         $this->cache = $cache;
@@ -301,15 +301,15 @@ final class UserBackend extends ABackend implements
      * Check if the user's password is correct then return its ID or
      * FALSE on failure.
      *
-     * @param string $uid      The user ID.
+     * @param string $username The username.
      * @param string $password The password.
      *
      * @return string|bool The user ID on success, false otherwise.
      */
-    public function checkPassword(string $uid, string $password)
+    public function checkPassword(string $username, string $password)
     {
         $this->logger->debug(
-            "Entering checkPassword($uid, *)", ["app" => $this->appName]
+            "Entering checkPassword($username, *)", ["app" => $this->appName]
         );
 
         $passwordAlgorithm = $this->getPasswordAlgorithm();
@@ -318,8 +318,14 @@ final class UserBackend extends ABackend implements
         }
 
         $caseSensitive = empty($this->properties[Opt::CASE_INSENSITIVE_USERNAME]);
-        $user = $this->userRepository->findByUid($uid, $caseSensitive);
-        if (!($user instanceof User) || ($caseSensitive && $user->uid !== $uid)) {
+        $emailLogin = !empty($this->properties[Opt::EMAIL_LOGIN]);
+        if ($emailLogin) {
+            $user = $this->userRepository->findByUsernameOrEmail($username, $caseSensitive);
+        } else {
+            $user = $this->userRepository->findByUsername($username, $caseSensitive);
+        }
+
+        if (!($user instanceof User)) {
             return false;
         }
 
@@ -507,10 +513,8 @@ final class UserBackend extends ABackend implements
             return false;
         }
 
-        $event = new GenericEvent($password);
-        $this->eventDispatcher->dispatch(
-            'OCP\PasswordPolicy::validate', $event
-        );
+        $event = new ValidatePasswordPolicyEvent($password);
+        $this->eventDispatcher->dispatchTyped($event);
 
         $user = $this->userRepository->findByUid($uid);
         if (!($user instanceof User)) {

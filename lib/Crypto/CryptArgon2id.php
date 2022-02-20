@@ -2,7 +2,7 @@
 /**
  * Nextcloud - user_sql
  *
- * @copyright 2018 Marcin Łojewski <dev@mlojewski.me>
+ * @copyright 2020 Marcin Łojewski <dev@mlojewski.me>
  * @author    Marcin Łojewski <dev@mlojewski.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -25,12 +25,12 @@ use OCA\UserSQL\Crypto\Param\IntParam;
 use OCP\IL10N;
 
 /**
- * Argon2 Crypt hash implementation.
+ * Argon2id Crypt hash implementation.
  *
  * @see    crypt()
  * @author Marcin Łojewski <dev@mlojewski.me>
  */
-class CryptArgon2 extends AbstractAlgorithm
+class CryptArgon2id extends AbstractAlgorithm
 {
     /**
      * @var int Maximum memory (in bytes) that may be used to compute.
@@ -59,7 +59,7 @@ class CryptArgon2 extends AbstractAlgorithm
     ) {
         if (version_compare(PHP_VERSION, "7.2.0") === -1) {
             throw new \RuntimeException(
-                "PASSWORD_ARGON2I requires PHP 7.2.0 or above."
+                " PASSWORD_ARGON2ID requires PHP 7.2.0 or above."
             );
         } else {
             if ($memoryCost === -1) {
@@ -93,7 +93,7 @@ class CryptArgon2 extends AbstractAlgorithm
     public function getPasswordHash($password, $salt = null)
     {
         return password_hash(
-            $password, PASSWORD_ARGON2I, [
+            $password, PASSWORD_ARGON2ID, [
                 "memory_cost" => $this->memoryCost,
                 "time_cost" => $this->timeCost,
                 "threads" => $this->threads
@@ -123,6 +123,6 @@ class CryptArgon2 extends AbstractAlgorithm
      */
     protected function getAlgorithmName()
     {
-        return "Argon2i (Crypt)";
+        return "Argon2id (Crypt)";
     }
 }

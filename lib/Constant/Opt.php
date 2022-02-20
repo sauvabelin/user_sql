@@ -2,7 +2,7 @@
 /**
  * Nextcloud - user_sql
  *
- * @copyright 2018 Marcin Łojewski <dev@mlojewski.me>
+ * @copyright 2020 Marcin Łojewski <dev@mlojewski.me>
  * @author    Marcin Łojewski <dev@mlojewski.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -34,6 +34,8 @@ final class Opt
     const CRYPTO_PARAM_0 = "opt.crypto_param_0";
     const CRYPTO_PARAM_1 = "opt.crypto_param_1";
     const CRYPTO_PARAM_2 = "opt.crypto_param_2";
+    const DEFAULT_GROUP = "opt.default_group";
+    const EMAIL_LOGIN = "opt.email_login";
     const EMAIL_SYNC = "opt.email_sync";
     const HOME_LOCATION = "opt.home_location";
     const HOME_MODE = "opt.home_mode";
@@ -44,5 +46,6 @@ final class Opt
     const PROVIDE_AVATAR = "opt.provide_avatar";
     const QUOTA_SYNC = "opt.quota_sync";
     const REVERSE_ACTIVE = "opt.reverse_active";
+    const SAFE_STORE = "opt.safe_store";
     const USE_CACHE = "opt.use_cache";
 }

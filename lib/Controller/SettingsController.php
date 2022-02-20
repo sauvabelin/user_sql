@@ -2,7 +2,7 @@
 /**
  * Nextcloud - user_sql
  *
- * @copyright 2018 Marcin Łojewski <dev@mlojewski.me>
+ * @copyright 2021 Marcin Łojewski <dev@mlojewski.me>
  * @author    Marcin Łojewski <dev@mlojewski.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -28,8 +28,11 @@ use OC\DB\Connection;
 use OC\DB\ConnectionFactory;
 use OCA\UserSQL\Cache;
 use OCA\UserSQL\Constant\App;
+use OCA\UserSQL\Constant\DB;
 use OCA\UserSQL\Constant\Opt;
 use OCA\UserSQL\Crypto\IPasswordAlgorithm;
+use OCA\UserSQL\Crypto\Param\ChoiceParam;
+use OCA\UserSQL\Crypto\Param\IntParam;
 use OCA\UserSQL\Platform\PlatformFactory;
 use OCA\UserSQL\Properties;
 use OCP\AppFramework\Controller;
@@ -76,8 +79,7 @@ class SettingsController extends Controller
     public function __construct(
         $appName, IRequest $request, ILogger $logger, IL10N $localization,
         Properties $properties, Cache $cache
-    )
-    {
+    ) {
         parent::__construct($appName, $request);
         $this->appName = $appName;
         $this->logger = $logger;
@@ -144,6 +146,9 @@ class SettingsController extends Controller
         $dbDatabase = $this->request->getParam("db-database");
         $dbUsername = $this->request->getParam("db-username");
         $dbPassword = $this->request->getParam("db-password");
+        $dbSSL_ca = $this->request->getParam("db-ssl_ca");
+        $dbSSL_cert = $this->request->getParam("db-ssl_cert");
+        $dbSSL_key = $this->request->getParam("db-ssl_key");
 
         if (empty($dbDriver)) {
             throw new DatabaseException("No database driver specified.");
@@ -158,8 +163,21 @@ class SettingsController extends Controller
             "password" => $dbPassword,
             "user" => $dbUsername,
             "dbname" => $dbDatabase,
-            "tablePrefix" => ""
+            "tablePrefix" => "",
+            "driverOptions" => array()
         ];
+
+        if ($dbDriver == 'mysql') {
+            if ($dbSSL_ca) {
+                $parameters["driverOptions"][\PDO::MYSQL_ATTR_SSL_CA] = \OC::$SERVERROOT . '/' . $dbSSL_ca;
+            }
+            if ($dbSSL_cert) {
+                $parameters["driverOptions"][\PDO::MYSQL_ATTR_SSL_CERT] = \OC::$SERVERROOT . '/' . $dbSSL_cert;
+            }
+            if ($dbSSL_key) {
+                $parameters["driverOptions"][\PDO::MYSQL_ATTR_SSL_KEY] = \OC::$SERVERROOT . '/' . $dbSSL_key;
+            }
+        }
 
         $connection = $connectionFactory->getConnection($dbDriver, $parameters);
         $connection->executeQuery("SELECT 'user_sql'");
@@ -206,6 +224,18 @@ class SettingsController extends Controller
                     )
                 ]
             ];
+        }
+
+        $safeStore = $this->request->getParam(str_replace(".", "-", Opt::SAFE_STORE), App::FALSE_VALUE);
+        if ($safeStore !== $this->properties[Opt::SAFE_STORE]) {
+            unset($this->properties[DB::HOSTNAME]);
+            unset($this->properties[DB::PASSWORD]);
+            unset($this->properties[DB::USERNAME]);
+            unset($this->properties[DB::DATABASE]);
+            unset($this->properties[DB::SSL_CA]);
+            unset($this->properties[DB::SSL_CERT]);
+            unset($this->properties[DB::SSL_KEY]);
+            $this->properties[Opt::SAFE_STORE] = $safeStore;
         }
 
         foreach ($properties as $key => $value) {
@@ -257,12 +287,22 @@ class SettingsController extends Controller
             $reqParam = $this->request->getParam(
                 "opt-crypto_param_" . $i, null
             );
-            $cryptoParam = $configuration[$i];
-
-            if (is_null($reqParam) || $reqParam < $cryptoParam->min
-                || $reqParam > $cryptoParam->max
-            ) {
+            if (is_null($reqParam)) {
                 return false;
+            }
+
+            $cryptoParam = $configuration[$i];
+            switch ($cryptoParam->type) {
+            case ChoiceParam::TYPE:
+                if (!in_array($reqParam, $cryptoParam->choices)) {
+                    return false;
+                }
+                break;
+            case IntParam::TYPE:
+                if ($reqParam < $cryptoParam->min || $reqParam > $cryptoParam->max) {
+                    return false;
+                }
+                break;
             }
         }
 

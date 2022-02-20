@@ -2,7 +2,7 @@
 /**
  * Nextcloud - user_sql
  *
- * @copyright 2018 Marcin Łojewski <dev@mlojewski.me>
+ * @copyright 2021 Marcin Łojewski <dev@mlojewski.me>
  * @author    Marcin Łojewski <dev@mlojewski.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 namespace OCA\UserSQL\Query;
 
 use Doctrine\DBAL\Driver\Statement;
+use Doctrine\DBAL\Exception as DBALException;
 use OC\DB\Connection;
 use OC\DB\ConnectionFactory;
 use OCA\UserSQL\Constant\DB;
@@ -115,20 +116,21 @@ class DataQuery
         }
 
         $this->logger->debug(
-            "Executing query:" . $query . ", " . implode(",", $params),
+            "Executing query: " . $query . ", " . implode(",", $params),
             ["app" => $this->appName]
         );
 
-        if ($result->execute() !== true) {
-            $error = $result->errorInfo();
+        try {
+            $result = $result->execute();
+            return $result;
+
+        } catch (DBALException  $exception) {
             $this->logger->error(
-                "Could not execute the query: " . implode(", ", $error),
+                "Could not execute the query: " . $exception->getMessage(),
                 ["app" => $this->appName]
             );
             return false;
         }
-
-        return $result;
     }
 
     /**
@@ -145,8 +147,21 @@ class DataQuery
             "password" => $this->properties[DB::PASSWORD],
             "user" => $this->properties[DB::USERNAME],
             "dbname" => $this->properties[DB::DATABASE],
-            "tablePrefix" => ""
+            "tablePrefix" => "",
+            "driverOptions" => array()
         );
+
+        if ($this->properties[DB::DRIVER] == 'mysql') {
+            if ($this->properties[DB::SSL_CA]) {
+                $parameters["driverOptions"][\PDO::MYSQL_ATTR_SSL_CA] = \OC::$SERVERROOT . '/' . $this->properties[DB::SSL_CA];
+            }
+            if ($this->properties[DB::SSL_CERT]) {
+                $parameters["driverOptions"][\PDO::MYSQL_ATTR_SSL_CERT] = \OC::$SERVERROOT . '/' . $this->properties[DB::SSL_CERT];
+            }
+            if ($this->properties[DB::SSL_KEY]) {
+                $parameters["driverOptions"][\PDO::MYSQL_ATTR_SSL_KEY] = \OC::$SERVERROOT . '/' . $this->properties[DB::SSL_KEY];
+            }
+        }
 
         $this->connection = $connectionFactory->getConnection(
             $this->properties[DB::DRIVER], $parameters
@@ -175,7 +190,7 @@ class DataQuery
             return false;
         }
 
-        $row = $result->fetch(\PDO::FETCH_COLUMN);
+        $row = $result->fetchOne();
         if ($row === false) {
             return $failure;
         }
@@ -201,8 +216,7 @@ class DataQuery
             return false;
         }
 
-        $column = $result->fetchAll(\PDO::FETCH_COLUMN);
-        return $column;
+        return $result->fetchFirstColumn();
     }
 
     /**
@@ -222,8 +236,7 @@ class DataQuery
             return false;
         }
 
-        $result->setFetchMode(\PDO::FETCH_CLASS, $entityClass);
-        $entity = $result->fetch();
+        $entity = $result->fetchAssociative();
 
         if ($entity === false) {
             return null;
@@ -237,7 +250,16 @@ class DataQuery
             return null;
         }
 
-        return $entity;
+        return self::arrayToObject($entity, $entityClass);
+    }
+
+    private function arrayToObject($array, $entityClass)
+    {
+        $object = new $entityClass();
+        foreach ($array as $name => $value) {
+            $object->$name = $array[$name];
+        }
+        return $object;
     }
 
     /**
@@ -259,9 +281,15 @@ class DataQuery
             return false;
         }
 
-        $result->setFetchMode(\PDO::FETCH_CLASS, $entityClass);
-        $entities = $result->fetchAll();
+        return self::iterableToObjectArray($result->iterateAssociative(), $entityClass);
+    }
 
-        return $entities;
+    private function iterableToObjectArray($array, $entityClass)
+    {
+        $result = array();
+        foreach ($array as $element) {
+            $result[] = self::arrayToObject($element, $entityClass);
+        }
+        return $result;
     }
 }

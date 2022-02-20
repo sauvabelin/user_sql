@@ -31,7 +31,7 @@ use Test\TestCase;
  *
  * @author Marcin Łojewski <dev@mlojewski.me>
  */
-class SHA512Test extends TestCase
+class SHA256Test extends TestCase
 {
     /**
      * @var IPasswordAlgorithm
@@ -53,7 +53,7 @@ class SHA512Test extends TestCase
         $this->assertTrue($this->crypto->checkPassword("password", $hash));
     }
 
-    protected function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
         $this->crypto = new SHA256($this->createMock(IL10N::class));

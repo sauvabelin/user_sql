@@ -2,7 +2,7 @@
 /**
  * Nextcloud - user_sql
  *
- * @copyright 2018 Marcin Łojewski <dev@mlojewski.me>
+ * @copyright 2020 Marcin Łojewski <dev@mlojewski.me>
  * @author    Marcin Łojewski <dev@mlojewski.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -19,6 +19,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use OCA\UserSQL\Crypto\IPasswordAlgorithm;
 use OCP\IL10N;
 
 script("user_sql", "settings");
@@ -98,7 +99,11 @@ function print_select_options(
                 print_text_input($l, "db-hostname", "Hostname", $_["db.hostname"]);
                 print_text_input($l, "db-database", "Database", $_["db.database"]);
                 print_text_input($l, "db-username", "Username", $_["db.username"]);
-                print_text_input($l, "db-password", "Password", $_["db.password"], "password"); ?>
+                print_text_input($l, "db-password", "Password", $_["db.password"], "password");
+                print_text_input($l, "db-ssl_ca", "SSL CA", $_["db.ssl_ca"]);
+                print_text_input($l, "db-ssl_cert", "SSL Certificate", $_["db.ssl_cert"]);
+                print_text_input($l, "db-ssl_key", "SSL Key", $_["db.ssl_key"]);
+                print_checkbox_input($l, "opt-safe_store", "System wide values", $_["opt.safe_store"]); ?>
                 <div class="button-right">
                     <input type="submit" id="user_sql-db_connection_verify" value="<?php p($l->t("Verify settings")); ?>">
                 </div>
@@ -109,6 +114,7 @@ function print_select_options(
             <p class="settings-hint"><?php p($l->t("Here are all currently supported options.")); ?></p>
             <fieldset><?php
                 print_checkbox_input($l, "opt-name_change", "Allow display name change", $_["opt.name_change"]);
+                print_checkbox_input($l, "opt-email_login", "Allow email login", $_["opt.email_login"]);
                 print_checkbox_input($l, "opt-password_change", "Allow password change", $_["opt.password_change"]);
                 print_checkbox_input($l, "opt-provide_avatar", "Allow providing avatar", $_["opt.provide_avatar"]);
                 print_checkbox_input($l, "opt-case_insensitive_username", "Case-insensitive username", $_["opt.case_insensitive_username"]);
@@ -123,14 +129,13 @@ function print_select_options(
                     $class = "OCA\\UserSQL\\Crypto\\" . basename(substr($filename, 0, -4));
                     try {
                         $passwordAlgorithm = new $class($l);
-                        if ($passwordAlgorithm instanceof
-                            \OCA\UserSQL\Crypto\IPasswordAlgorithm
-                        ) {
+                        if ($passwordAlgorithm instanceof IPasswordAlgorithm) {
                             $hashes[$class] = $passwordAlgorithm->getVisibleName();
                         }
                     } catch (Throwable $e) {
                     }
                 }
+                asort($hashes);
 
                 print_select_options($l, "opt-crypto_class", "Hash algorithm", $hashes, $_["opt.crypto_class"]); ?>
                 <div id="opt-crypto_params_loading" style="display: none">
@@ -142,7 +147,8 @@ function print_select_options(
                 print_select_options($l, "opt-email_sync", "Email sync", ["" => "None", "initial" => "Synchronise only once", "force_nc"=>"Nextcloud always wins", "force_sql"=>"SQL always wins"], $_["opt.email_sync"]);
                 print_select_options($l, "opt-quota_sync", "Quota sync", ["" => "None", "initial" => "Synchronise only once", "force_nc"=>"Nextcloud always wins", "force_sql"=>"SQL always wins"], $_["opt.quota_sync"]);
                 print_select_options($l, "opt-home_mode", "Home mode", ["" => "Default", "query" => "Query", "static" => "Static"], $_["opt.home_mode"]);
-                print_text_input($l, "opt-home_location", "Home Location", $_["opt.home_location"]); ?>
+                print_text_input($l, "opt-home_location", "Home location", $_["opt.home_location"]);
+                print_text_input($l, "opt-default_group", "Default group", $_["opt.default_group"]); ?>
             </fieldset>
         </div>
         <div class="section clear-left">
@@ -152,7 +158,8 @@ function print_select_options(
                 print_text_input($l, "db-table-user", "Table name", $_["db.table.user"]); ?>
                 <h3><?php p($l->t("Columns")); ?></h3>
                 <?php
-                print_text_input($l, "db-table-user-column-uid", "Username", $_["db.table.user.column.uid"]);
+                print_text_input($l, "db-table-user-column-uid", "UID", $_["db.table.user.column.uid"]);
+                print_text_input($l, "db-table-user-column-username", "Username", $_["db.table.user.column.username"]);
                 print_text_input($l, "db-table-user-column-email", "Email", $_["db.table.user.column.email"]);
                 print_text_input($l, "db-table-user-column-quota", "Quota", $_["db.table.user.column.quota"]);
                 print_text_input($l, "db-table-user-column-home", "Home", $_["db.table.user.column.home"]);
@@ -176,9 +183,9 @@ function print_select_options(
                 print_text_input($l, "db-table-group", "Table name", $_["db.table.group"]); ?>
                 <h3><?php p($l->t("Columns")); ?></h3>
                 <?php
-                print_text_input($l, "db-table-group-column-admin", "Is admin", $_["db.table.group.column.admin"]);
+                print_text_input($l, "db-table-group-column-gid", "GID", $_["db.table.group.column.gid"]);
                 print_text_input($l, "db-table-group-column-name", "Display name", $_["db.table.group.column.name"]);
-                print_text_input($l, "db-table-group-column-gid", "Group name", $_["db.table.group.column.gid"]); ?>
+                print_text_input($l, "db-table-group-column-admin", "Is admin", $_["db.table.group.column.admin"]); ?>
             </fieldset>
         </div>
         <div class="section">
@@ -188,8 +195,8 @@ function print_select_options(
                 print_text_input($l, "db-table-user_group", "Table name", $_["db.table.user_group"]); ?>
                 <h3><?php p($l->t("Columns")); ?></h3>
                 <?php
-                print_text_input($l, "db-table-user_group-column-uid", "Username", $_["db.table.user_group.column.uid"]);
-                print_text_input($l, "db-table-user_group-column-gid", "Group name", $_["db.table.user_group.column.gid"]); ?>
+                print_text_input($l, "db-table-user_group-column-uid", "UID", $_["db.table.user_group.column.uid"]);
+                print_text_input($l, "db-table-user_group-column-gid", "GID", $_["db.table.user_group.column.gid"]); ?>
             </fieldset>
         </div>
     </div>
