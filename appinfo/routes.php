@@ -51,7 +51,7 @@ $application->registerRoutes(
             [
                 "name" => "GroupChange#syncGroup",
                 "url" => "/api/sync",
-                "verb" => "GET"
+                "verb" => "POST"
             ]
         ]
     ]
