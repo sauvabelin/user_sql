@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <info>
     <id>user_sql</id>
-    <name>User and Group SQL Backends</name>
+    <name>User and Group SQL Backends (BS)</name>
     <summary>Control users and groups by SQL queries</summary>
     <description>
         Use external database as a source for Nextcloud users and groups.
@@ -29,4 +29,3 @@
         <admin-section>OCA\UserSQL\Settings\Section</admin-section>
     </settings>
 </info>
-

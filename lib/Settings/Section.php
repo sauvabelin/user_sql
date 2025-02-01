@@ -73,7 +73,7 @@ class Section implements IIconSection
      */
     public function getName()
     {
-        return $this->localization->t("SQL Backends");
+        return $this->localization->t("SQL Backends BS");
     }
 
     /**
