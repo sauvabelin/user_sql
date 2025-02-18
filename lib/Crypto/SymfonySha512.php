@@ -6,17 +6,14 @@ require_once __DIR__ . "/../../vendor/autoload.php";
 
 use Symfony\Component\Security\Core\Encoder\MessageDigestPasswordEncoder;
 
-class SymfonySha512 implements IPasswordAlgorithm
+class SymfonySha512 extends AbstractAlgorithm
 {
-    /**
-     * Get the hash algorithm name.
-     * This name is visible in the admin panel.
-     *
-     * @return string
+   /**
+     * @inheritdoc
      */
-    public function getVisibleName()
+    protected function getAlgorithmName()
     {
-        return "NetBS Encoding";
+        return "NETBS_Encoding";
     }
 
     /**
@@ -55,11 +52,4 @@ class SymfonySha512 implements IPasswordAlgorithm
         return $encoder->isPasswordValid($dbHash, $password, $salt);
     }
 
-    /**
-     * @inheritdoc
-     */
-    public function configuration()
-    {
-        return [];
-    }
 }
