@@ -31,7 +31,6 @@ use OCP\Group\Backend\ABackend;
 use OCP\Group\Backend\ICountUsersBackend;
 use OCP\Group\Backend\IGroupDetailsBackend;
 use OCP\Group\Backend\IIsAdminBackend;
-use OCP\Group\Backend\ISearchableGroupBackend;
 use OCP\ILogger;
 use OCP\IUserManager;
 
@@ -45,8 +44,7 @@ use OC\User\LazyUser;
 final class GroupBackend extends ABackend implements
     ICountUsersBackend,
     IGroupDetailsBackend,
-    IIsAdminBackend,
-	ISearchableGroupBackend
+    IIsAdminBackend
 {
     const USER_SQL_GID = "user_sql";
 
