@@ -37,8 +37,8 @@ use OCA\UserSQL\Platform\PlatformFactory;
 use OCA\UserSQL\Properties;
 use OCP\AppFramework\Controller;
 use OCP\IL10N;
-use OCP\ILogger;
 use OCP\IRequest;
+use Psr\Log\LoggerInterface;
 use ReflectionClass;
 use ReflectionException;
 
@@ -50,7 +50,7 @@ use ReflectionException;
 class SettingsController extends Controller
 {
     /**
-     * @var ILogger The logger instance.
+     * @var LoggerInterface The logger instance.
      */
     private $logger;
     /**
@@ -71,13 +71,13 @@ class SettingsController extends Controller
      *
      * @param string     $appName      The application name.
      * @param IRequest   $request      An instance of the request.
-     * @param ILogger    $logger       The logger instance.
+     * @param LoggerInterface $logger       The logger instance.
      * @param IL10N      $localization The localization service.
      * @param Properties $properties   The properties array.
      * @param Cache      $cache        The cache instance.
      */
     public function __construct(
-        $appName, IRequest $request, ILogger $logger, IL10N $localization,
+        $appName, IRequest $request, LoggerInterface $logger, IL10N $localization,
         Properties $properties, Cache $cache
     ) {
         parent::__construct($appName, $request);
@@ -384,7 +384,7 @@ class SettingsController extends Controller
 
             return $tables;
         } catch (Exception $e) {
-            $this->logger->logException($e);
+            $this->logger->error($e->getMessage(), ['exception' => $e]);
             return [];
         }
     }
@@ -431,7 +431,7 @@ class SettingsController extends Controller
 
             return $columns;
         } catch (Exception $e) {
-            $this->logger->logException($e);
+            $this->logger->error($e->getMessage(), ['exception' => $e]);
             return [];
         }
     }
