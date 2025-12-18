@@ -22,10 +22,12 @@
 
 use OCA\UserSQL\AppInfo\Application;
 use OCP\AppFramework\QueryException;
+use OCP\Server;
+use Psr\Log\LoggerInterface;
 
 try {
     $app = new Application();
     $app->registerBackends();
 } catch (QueryException $queryException) {
-    OC::$server->getLogger()->logException($queryException);
+    Server::get(LoggerInterface::class)->error($queryException->getMessage(), ['exception' => $queryException]);
 }
