@@ -47,7 +47,7 @@ class SyncGroups extends Command {
 
 		$elapsed = round(microtime(true) - $start, 2);
 		$prefix = $options['dry_run'] ? '[DRY-RUN] ' : '';
-		$output->writeln("{$prefix}Sync completed in {$elapsed}s: {$result['added']} added, {$result['removed']} removed, {$result['errors']} errors");
+		$output->writeln("{$prefix}Sync completed in {$elapsed}s: {$result['added']} added, {$result['removed']} removed, {$result['skipped']} skipped, {$result['errors']} errors");
 
 		return $result['errors'] > 0 ? 1 : 0;
 	}

@@ -29,7 +29,7 @@ class SyncGroupMembership extends TimedJob {
 		try {
 			$result = $this->syncService->sync();
 			$this->logger->info(
-				"Group membership sync completed: {$result['added']} added, {$result['removed']} removed, {$result['errors']} errors"
+				"Group membership sync completed: {$result['added']} added, {$result['removed']} removed, {$result['skipped']} skipped, {$result['errors']} errors"
 			);
 		} catch (\Exception $e) {
 			$this->logger->error('Group membership sync failed: ' . $e->getMessage(), [
