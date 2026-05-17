@@ -166,6 +166,7 @@ class SettingsController extends Controller
             "user" => $dbUsername,
             "dbname" => $dbDatabase,
             "tablePrefix" => "",
+            "charset" => "utf8mb4",
             "driverOptions" => array()
         ];
 

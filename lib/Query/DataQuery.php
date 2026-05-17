@@ -152,6 +152,7 @@ class DataQuery
             "user" => $this->properties[DB::USERNAME],
             "dbname" => $this->properties[DB::DATABASE],
             "tablePrefix" => "",
+            "charset" => "utf8mb4",
             "driverOptions" => array()
         );
 
