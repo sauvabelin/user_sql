@@ -148,9 +148,15 @@ class GroupSyncService {
 
 		if (!$dryRun) {
 			try {
+				// Order matches OC\Group\Group::addUser(): pre-hook, mutation
+				// (already done in the external DB), post-hook, then typed
+				// event. OC\Group\Manager listens to 'postAddUser' to clear
+				// its cachedUserGroups, so the cache MUST be flushed before
+				// the typed event fires – otherwise listeners such as Talk
+				// query getUserGroupIds() and get a stale answer.
 				$this->emitLegacyHook('preAddUser', $group, $user);
-				$this->dispatcher->dispatchTyped(new UserAddedEvent($group, $user));
 				$this->emitLegacyHook('postAddUser', $group, $user);
+				$this->dispatcher->dispatchTyped(new UserAddedEvent($group, $user));
 				$this->insertSnapshot($gid, $uid);
 			} catch (\Throwable $e) {
 				// A listener threw (Talk, mail, custom apps, ...). Don't let one
@@ -198,14 +204,18 @@ class GroupSyncService {
 
 		if (!$dryRun) {
 			try {
-				// Emitting the legacy '\OC\Group::preRemoveUser' hook is required
-				// because OC\Group\Manager listens to it to clear its own
-				// cachedUserGroups. Without this, IGroupManager::getUserGroupIds()
-				// returns a stale list that still contains $gid, and Talk keeps
-				// the user in the conversation.
+				// Order matches OC\Group\Group::removeUser(): pre-hook,
+				// mutation (already done in the external DB), post-hook,
+				// then typed event. OC\Group\Manager listens to
+				// 'postRemoveUser' to clear cachedUserGroups, so the cache
+				// MUST be flushed before the typed event fires – otherwise
+				// Talk's GroupMembershipListener queries getUserGroupIds()
+				// from filterRoomsWithOtherGroupMemberships and reads the
+				// stale list, deciding the user is "still linked" and
+				// keeping them in the conversation.
 				$this->emitLegacyHook('preRemoveUser', $group, $user);
-				$this->dispatcher->dispatchTyped(new UserRemovedEvent($group, $user));
 				$this->emitLegacyHook('postRemoveUser', $group, $user);
+				$this->dispatcher->dispatchTyped(new UserRemovedEvent($group, $user));
 				$this->deleteSnapshot($gid, $uid);
 			} catch (\Throwable $e) {
 				$result['errors']++;

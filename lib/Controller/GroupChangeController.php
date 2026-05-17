@@ -53,16 +53,23 @@ class GroupChangeController extends Controller {
 
 		if ($user && $group) {
 
+			// Order matches OC\Group\Group::addUser()/removeUser(): pre-hook,
+			// mutation (already applied to the external DB by the caller),
+			// post-hook, then typed event. OC\Group\Manager listens to
+			// 'postAddUser'/'postRemoveUser' to clear cachedUserGroups, so
+			// the cache MUST be flushed before the typed event – otherwise
+			// listeners such as Talk's GroupMembershipListener query
+			// getUserGroupIds() and read the stale list.
 			$done = false;
 			if ($operation === 'join') {
 				$this->emitLegacyHook('preAddUser', $group, $user);
-				$this->dispatcher->dispatchTyped(new UserAddedEvent($group, $user));
 				$this->emitLegacyHook('postAddUser', $group, $user);
+				$this->dispatcher->dispatchTyped(new UserAddedEvent($group, $user));
 				$done = true;
 			} else if ($operation === 'leave') {
 				$this->emitLegacyHook('preRemoveUser', $group, $user);
-				$this->dispatcher->dispatchTyped(new UserRemovedEvent($group, $user));
 				$this->emitLegacyHook('postRemoveUser', $group, $user);
+				$this->dispatcher->dispatchTyped(new UserRemovedEvent($group, $user));
 				$done = true;
 			}
 
