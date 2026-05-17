@@ -498,6 +498,27 @@ final class GroupBackend extends ABackend implements
     }
 
     /**
+     * Invalidate cached membership data for a single user/group pair so that
+     * subsequent lookups (getUserGroups, inGroup, usersInGroup, …) reflect the
+     * current state of the external SQL database. Must be called whenever a
+     * membership change is detected outside of this Nextcloud instance, before
+     * dispatching group membership events – otherwise listeners (e.g. Talk)
+     * may read stale group memberships from this backend.
+     *
+     * @param string $uid The user ID whose membership has changed.
+     * @param string $gid The group ID whose membership has changed.
+     */
+    public function invalidateUserGroupCache(string $uid, string $gid): void
+    {
+        $prefix = self::class;
+        $this->cache->remove($prefix . "user_groups_" . $uid);
+        $this->cache->remove($prefix . "user_group_" . $uid . "_" . $gid);
+        $this->cache->clear($prefix . "group_uids_" . $gid . "_");
+        $this->cache->clear($prefix . "group_users_" . $gid . "_");
+        $this->cache->clear($prefix . "users#_" . $gid . "_");
+    }
+
+    /**
      * Check if this backend is correctly set and can be enabled.
      *
      * @return bool TRUE if all necessary options for this backend

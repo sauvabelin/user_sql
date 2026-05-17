@@ -96,12 +96,26 @@ class Cache
     }
 
     /**
-     * Clear the cache of all entries.
+     * Clear the cache of all entries matching the given prefix.
+     *
+     * @param string $prefix (optional) Key prefix. Defaults to "" (clear all).
      *
      * @return bool TRUE on success, FALSE otherwise.
      */
-    public function clear()
+    public function clear($prefix = "")
     {
-        return $this->cache->clear();
+        return $this->cache->clear($prefix);
+    }
+
+    /**
+     * Remove a single value from the cache memory.
+     *
+     * @param string $key The cache value key.
+     *
+     * @return bool TRUE on success, FALSE otherwise.
+     */
+    public function remove($key)
+    {
+        return $this->cache->remove($key);
     }
 }

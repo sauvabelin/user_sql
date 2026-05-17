@@ -4,19 +4,24 @@ declare(strict_types=1);
 
 namespace OCA\UserSQL\Service;
 
+use OC\Hooks\PublicEmitter;
+use OCA\UserSQL\Backend\GroupBackend;
 use OCA\UserSQL\Repository\GroupRepository;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\EventDispatcher\IEventDispatcher;
 use OCP\Group\Events\UserAddedEvent;
 use OCP\Group\Events\UserRemovedEvent;
 use OCP\IDBConnection;
+use OCP\IGroup;
 use OCP\IGroupManager;
+use OCP\IUser;
 use OCP\IUserManager;
 use Psr\Log\LoggerInterface;
 
 class GroupSyncService {
 
 	private GroupRepository $groupRepository;
+	private GroupBackend $groupBackend;
 	private IDBConnection $db;
 	private IEventDispatcher $dispatcher;
 	private IUserManager $userManager;
@@ -25,6 +30,7 @@ class GroupSyncService {
 
 	public function __construct(
 		GroupRepository $groupRepository,
+		GroupBackend $groupBackend,
 		IDBConnection $db,
 		IEventDispatcher $dispatcher,
 		IUserManager $userManager,
@@ -32,6 +38,7 @@ class GroupSyncService {
 		LoggerInterface $logger
 	) {
 		$this->groupRepository = $groupRepository;
+		$this->groupBackend = $groupBackend;
 		$this->db = $db;
 		$this->dispatcher = $dispatcher;
 		$this->userManager = $userManager;
@@ -41,16 +48,15 @@ class GroupSyncService {
 
 	/**
 	 * @param array{dry_run?: bool, reset?: bool, group?: string} $options
-	 * @return array{added: int, removed: int, errors: int, details: string[]}
+	 * @return array{added: int, removed: int, errors: int, skipped: int, details: string[]}
 	 */
 	public function sync(array $options = []): array {
 		$dryRun = $options['dry_run'] ?? false;
 		$reset = $options['reset'] ?? false;
 		$filterGroup = $options['group'] ?? null;
 
-		$result = ['added' => 0, 'removed' => 0, 'errors' => 0, 'details' => []];
+		$result = ['added' => 0, 'removed' => 0, 'errors' => 0, 'skipped' => 0, 'details' => []];
 
-		// Reset snapshot if requested
 		if ($reset && !$dryRun) {
 			$this->db->getQueryBuilder()
 				->delete('usersql_group_sync')
@@ -58,7 +64,6 @@ class GroupSyncService {
 			$result['details'][] = 'Snapshot table reset';
 		}
 
-		// Get all groups from external DB
 		$groups = $this->groupRepository->findAllBySearchTerm('%');
 		if ($groups === false) {
 			$this->logger->error('Failed to fetch groups from external DB');
@@ -72,7 +77,7 @@ class GroupSyncService {
 		}
 
 		if ($filterGroup !== null) {
-			if (!in_array($filterGroup, $currentGids)) {
+			if (!in_array($filterGroup, $currentGids, true)) {
 				$result['details'][] = "Group '{$filterGroup}' not found in external DB";
 				$result['errors']++;
 				return $result;
@@ -80,24 +85,17 @@ class GroupSyncService {
 			$currentGids = [$filterGroup];
 		}
 
-		// Load entire snapshot in one query
 		$snapshot = $this->loadSnapshot();
 
-		// Detect deleted groups (in snapshot but not in current)
 		$snapshotGids = array_keys($snapshot);
-		$deletedGids = array_diff($snapshotGids, $currentGids);
-		if ($filterGroup !== null) {
-			$deletedGids = []; // Don't process deleted groups when filtering
-		}
+		$deletedGids = $filterGroup !== null ? [] : array_diff($snapshotGids, $currentGids);
 
-		// Process deleted groups
 		foreach ($deletedGids as $gid) {
 			foreach ($snapshot[$gid] as $uid) {
 				$this->processRemoval($gid, $uid, $dryRun, $result);
 			}
 		}
 
-		// Process each current group
 		foreach ($currentGids as $gid) {
 			$currentMembers = $this->groupRepository->findAllUidsBySearchTerm($gid, '%');
 			if ($currentMembers === false) {
@@ -124,6 +122,13 @@ class GroupSyncService {
 	}
 
 	private function processAddition(string $gid, string $uid, bool $dryRun, array &$result): void {
+		// Invalidate our own membership cache before resolving the user/group
+		// so that getUserGroups()/inGroup()/usersInGroup() reflect the current
+		// external state rather than a stale cache entry.
+		if (!$dryRun) {
+			$this->groupBackend->invalidateUserGroupCache($uid, $gid);
+		}
+
 		$user = $this->userManager->get($uid);
 		$group = $this->groupManager->get($gid);
 
@@ -134,6 +139,7 @@ class GroupSyncService {
 			if ($group === null) {
 				$result['details'][] = "Skip add: group '{$gid}' not found in Nextcloud";
 			}
+			$result['skipped']++;
 			return;
 		}
 
@@ -141,23 +147,91 @@ class GroupSyncService {
 		$result['details'][] = ($dryRun ? '[DRY-RUN] ' : '') . "Added '{$uid}' to '{$gid}'";
 
 		if (!$dryRun) {
-			$this->dispatcher->dispatchTyped(new UserAddedEvent($group, $user));
-			$this->insertSnapshot($gid, $uid);
+			try {
+				// Order matches OC\Group\Group::addUser(): pre-hook, mutation
+				// (already done in the external DB), post-hook, then typed
+				// event. OC\Group\Manager listens to 'postAddUser' to clear
+				// its cachedUserGroups, so the cache MUST be flushed before
+				// the typed event fires – otherwise listeners such as Talk
+				// query getUserGroupIds() and get a stale answer.
+				$this->emitLegacyHook('preAddUser', $group, $user);
+				$this->emitLegacyHook('postAddUser', $group, $user);
+				$this->dispatcher->dispatchTyped(new UserAddedEvent($group, $user));
+				$this->insertSnapshot($gid, $uid);
+			} catch (\Throwable $e) {
+				// A listener threw (Talk, mail, custom apps, ...). Don't let one
+				// faulty listener brick the rest of the sync run – count it as an
+				// error and continue. The snapshot is intentionally not written so
+				// the next run retries.
+				$result['errors']++;
+				$result['added']--;
+				$result['details'][] = "Error adding '{$uid}' to '{$gid}': " . $e->getMessage();
+				$this->logger->error(
+					"Listener failed while adding '{$uid}' to '{$gid}'",
+					['exception' => $e]
+				);
+			}
 		}
 	}
 
 	private function processRemoval(string $gid, string $uid, bool $dryRun, array &$result): void {
+		// Critical: invalidate our caches BEFORE Talk (and other listeners)
+		// react to the typed event. Talk calls IGroupManager::getUserGroupIds()
+		// from its UserRemovedEvent listener to decide whether the user is
+		// still a member of the group via another link; if our cache still
+		// reports the user as a member, Talk will not remove them from the
+		// linked rooms.
+		if (!$dryRun) {
+			$this->groupBackend->invalidateUserGroupCache($uid, $gid);
+		}
+
 		$user = $this->userManager->get($uid);
 		$group = $this->groupManager->get($gid);
+
+		if ($user === null || $group === null) {
+			// Nothing to notify – the user or group no longer exists in
+			// Nextcloud. Drop the snapshot entry so we do not retry forever.
+			if (!$dryRun) {
+				$this->deleteSnapshot($gid, $uid);
+			}
+			$result['skipped']++;
+			$result['details'][] = "Skip remove: user '{$uid}' or group '{$gid}' not in Nextcloud";
+			return;
+		}
 
 		$result['removed']++;
 		$result['details'][] = ($dryRun ? '[DRY-RUN] ' : '') . "Removed '{$uid}' from '{$gid}'";
 
 		if (!$dryRun) {
-			if ($user !== null && $group !== null) {
+			try {
+				// Order matches OC\Group\Group::removeUser(): pre-hook,
+				// mutation (already done in the external DB), post-hook,
+				// then typed event. OC\Group\Manager listens to
+				// 'postRemoveUser' to clear cachedUserGroups, so the cache
+				// MUST be flushed before the typed event fires – otherwise
+				// Talk's GroupMembershipListener queries getUserGroupIds()
+				// from filterRoomsWithOtherGroupMemberships and reads the
+				// stale list, deciding the user is "still linked" and
+				// keeping them in the conversation.
+				$this->emitLegacyHook('preRemoveUser', $group, $user);
+				$this->emitLegacyHook('postRemoveUser', $group, $user);
 				$this->dispatcher->dispatchTyped(new UserRemovedEvent($group, $user));
+				$this->deleteSnapshot($gid, $uid);
+			} catch (\Throwable $e) {
+				$result['errors']++;
+				$result['removed']--;
+				$result['details'][] = "Error removing '{$uid}' from '{$gid}': " . $e->getMessage();
+				$this->logger->error(
+					"Listener failed while removing '{$uid}' from '{$gid}'",
+					['exception' => $e]
+				);
 			}
-			$this->deleteSnapshot($gid, $uid);
+		}
+	}
+
+	private function emitLegacyHook(string $method, IGroup $group, IUser $user): void {
+		if ($this->groupManager instanceof PublicEmitter) {
+			$this->groupManager->emit('\OC\Group', $method, [$group, $user]);
 		}
 	}
 
@@ -179,15 +253,33 @@ class GroupSyncService {
 		return $snapshot;
 	}
 
+	/**
+	 * Record that NC has been notified of (gid, uid) membership. Idempotent.
+	 * Called by both the diff-based sync and by GroupChangeController on the
+	 * real-time webhook path so the snapshot reflects "what NC was told"
+	 * regardless of which path delivered the notification.
+	 */
+	public function recordMembership(string $gid, string $uid): void {
+		$this->insertSnapshot($gid, $uid);
+	}
+
+	/**
+	 * Forget that NC was told about (gid, uid). Idempotent (deleting a
+	 * non-existent row is a no-op).
+	 */
+	public function forgetMembership(string $gid, string $uid): void {
+		$this->deleteSnapshot($gid, $uid);
+	}
+
 	private function insertSnapshot(string $gid, string $uid): void {
-		$qb = $this->db->getQueryBuilder();
-		$qb->insert('usersql_group_sync')
-			->values([
-				'gid' => $qb->createNamedParameter($gid),
-				'uid' => $qb->createNamedParameter($uid),
-				'synced_at' => $qb->createNamedParameter(new \DateTime(), IQueryBuilder::PARAM_DATETIME_MUTABLE),
-			])
-			->executeStatement();
+		// Idempotent: unique (gid, uid) index would otherwise reject a re-add
+		// arriving via the real-time path for a membership the snapshot
+		// already knows about.
+		$this->db->insertIgnoreConflict('usersql_group_sync', [
+			'gid' => $gid,
+			'uid' => $uid,
+			'synced_at' => (new \DateTime())->format('Y-m-d H:i:s'),
+		]);
 	}
 
 	private function deleteSnapshot(string $gid, string $uid): void {
