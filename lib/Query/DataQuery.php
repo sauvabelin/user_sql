@@ -152,11 +152,11 @@ class DataQuery
             "user" => $this->properties[DB::USERNAME],
             "dbname" => $this->properties[DB::DATABASE],
             "tablePrefix" => "",
-            "charset" => "utf8mb4",
             "driverOptions" => array()
         );
 
         if ($this->properties[DB::DRIVER] == 'mysql') {
+            $parameters["charset"] = "utf8mb4";
             if ($this->properties[DB::SSL_CA]) {
                 $parameters["driverOptions"][\PDO::MYSQL_ATTR_SSL_CA] = \OC::$SERVERROOT . '/' . $this->properties[DB::SSL_CA];
             }

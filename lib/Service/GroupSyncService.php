@@ -147,10 +147,24 @@ class GroupSyncService {
 		$result['details'][] = ($dryRun ? '[DRY-RUN] ' : '') . "Added '{$uid}' to '{$gid}'";
 
 		if (!$dryRun) {
-			$this->emitLegacyHook('preAddUser', $group, $user);
-			$this->dispatcher->dispatchTyped(new UserAddedEvent($group, $user));
-			$this->emitLegacyHook('postAddUser', $group, $user);
-			$this->insertSnapshot($gid, $uid);
+			try {
+				$this->emitLegacyHook('preAddUser', $group, $user);
+				$this->dispatcher->dispatchTyped(new UserAddedEvent($group, $user));
+				$this->emitLegacyHook('postAddUser', $group, $user);
+				$this->insertSnapshot($gid, $uid);
+			} catch (\Throwable $e) {
+				// A listener threw (Talk, mail, custom apps, ...). Don't let one
+				// faulty listener brick the rest of the sync run – count it as an
+				// error and continue. The snapshot is intentionally not written so
+				// the next run retries.
+				$result['errors']++;
+				$result['added']--;
+				$result['details'][] = "Error adding '{$uid}' to '{$gid}': " . $e->getMessage();
+				$this->logger->error(
+					"Listener failed while adding '{$uid}' to '{$gid}'",
+					['exception' => $e]
+				);
+			}
 		}
 	}
 
@@ -183,15 +197,25 @@ class GroupSyncService {
 		$result['details'][] = ($dryRun ? '[DRY-RUN] ' : '') . "Removed '{$uid}' from '{$gid}'";
 
 		if (!$dryRun) {
-			// Emitting the legacy '\OC\Group::preRemoveUser' hook is required
-			// because OC\Group\Manager listens to it to clear its own
-			// cachedUserGroups. Without this, IGroupManager::getUserGroupIds()
-			// returns a stale list that still contains $gid, and Talk keeps
-			// the user in the conversation.
-			$this->emitLegacyHook('preRemoveUser', $group, $user);
-			$this->dispatcher->dispatchTyped(new UserRemovedEvent($group, $user));
-			$this->emitLegacyHook('postRemoveUser', $group, $user);
-			$this->deleteSnapshot($gid, $uid);
+			try {
+				// Emitting the legacy '\OC\Group::preRemoveUser' hook is required
+				// because OC\Group\Manager listens to it to clear its own
+				// cachedUserGroups. Without this, IGroupManager::getUserGroupIds()
+				// returns a stale list that still contains $gid, and Talk keeps
+				// the user in the conversation.
+				$this->emitLegacyHook('preRemoveUser', $group, $user);
+				$this->dispatcher->dispatchTyped(new UserRemovedEvent($group, $user));
+				$this->emitLegacyHook('postRemoveUser', $group, $user);
+				$this->deleteSnapshot($gid, $uid);
+			} catch (\Throwable $e) {
+				$result['errors']++;
+				$result['removed']--;
+				$result['details'][] = "Error removing '{$uid}' from '{$gid}': " . $e->getMessage();
+				$this->logger->error(
+					"Listener failed while removing '{$uid}' from '{$gid}'",
+					['exception' => $e]
+				);
+			}
 		}
 	}
 

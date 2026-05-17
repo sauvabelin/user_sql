@@ -166,11 +166,11 @@ class SettingsController extends Controller
             "user" => $dbUsername,
             "dbname" => $dbDatabase,
             "tablePrefix" => "",
-            "charset" => "utf8mb4",
             "driverOptions" => array()
         ];
 
         if ($dbDriver == 'mysql') {
+            $parameters["charset"] = "utf8mb4";
             if ($dbSSL_ca) {
                 $parameters["driverOptions"][\PDO::MYSQL_ATTR_SSL_CA] = \OC::$SERVERROOT . '/' . $dbSSL_ca;
             }
