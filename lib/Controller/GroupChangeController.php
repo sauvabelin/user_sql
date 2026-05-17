@@ -6,6 +6,7 @@ namespace OCA\UserSQL\Controller;
 
 use OC\Hooks\PublicEmitter;
 use OCA\UserSQL\Backend\GroupBackend;
+use OCA\UserSQL\Service\GroupSyncService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\Group\Events\UserAddedEvent;
@@ -27,11 +28,14 @@ class GroupChangeController extends Controller {
 
 	private GroupBackend $groupBackend;
 
-	public function __construct(string $appName, IRequest $request, IEventDispatcher $eventDispatcher, IUserManager $userManager, IGroupManager $groupManager, GroupBackend $groupBackend) {
+	private GroupSyncService $syncService;
+
+	public function __construct(string $appName, IRequest $request, IEventDispatcher $eventDispatcher, IUserManager $userManager, IGroupManager $groupManager, GroupBackend $groupBackend, GroupSyncService $syncService) {
 		$this->dispatcher = $eventDispatcher;
 		$this->userManager = $userManager;
 		$this->groupManager = $groupManager;
 		$this->groupBackend = $groupBackend;
+		$this->syncService = $syncService;
 		parent::__construct($appName, $request);
 	}
 
@@ -60,16 +64,25 @@ class GroupChangeController extends Controller {
 			// the cache MUST be flushed before the typed event – otherwise
 			// listeners such as Talk's GroupMembershipListener query
 			// getUserGroupIds() and read the stale list.
+			// Update the snapshot alongside the event dispatch so the
+			// authoritative "what NC has been told" record reflects this
+			// real-time mutation. Without this, the diff-based sync command
+			// cannot recover from a later lost-message scenario (add fires
+			// here, subsequent remove dropped on the floor → sync sees
+			// snapshot=∅, current=∅, no diff, Talk left with stale attendee
+			// forever).
 			$done = false;
 			if ($operation === 'join') {
 				$this->emitLegacyHook('preAddUser', $group, $user);
 				$this->emitLegacyHook('postAddUser', $group, $user);
 				$this->dispatcher->dispatchTyped(new UserAddedEvent($group, $user));
+				$this->syncService->recordMembership($gd, $ud);
 				$done = true;
 			} else if ($operation === 'leave') {
 				$this->emitLegacyHook('preRemoveUser', $group, $user);
 				$this->emitLegacyHook('postRemoveUser', $group, $user);
 				$this->dispatcher->dispatchTyped(new UserRemovedEvent($group, $user));
+				$this->syncService->forgetMembership($gd, $ud);
 				$done = true;
 			}
 

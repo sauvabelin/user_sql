@@ -253,15 +253,33 @@ class GroupSyncService {
 		return $snapshot;
 	}
 
+	/**
+	 * Record that NC has been notified of (gid, uid) membership. Idempotent.
+	 * Called by both the diff-based sync and by GroupChangeController on the
+	 * real-time webhook path so the snapshot reflects "what NC was told"
+	 * regardless of which path delivered the notification.
+	 */
+	public function recordMembership(string $gid, string $uid): void {
+		$this->insertSnapshot($gid, $uid);
+	}
+
+	/**
+	 * Forget that NC was told about (gid, uid). Idempotent (deleting a
+	 * non-existent row is a no-op).
+	 */
+	public function forgetMembership(string $gid, string $uid): void {
+		$this->deleteSnapshot($gid, $uid);
+	}
+
 	private function insertSnapshot(string $gid, string $uid): void {
-		$qb = $this->db->getQueryBuilder();
-		$qb->insert('usersql_group_sync')
-			->values([
-				'gid' => $qb->createNamedParameter($gid),
-				'uid' => $qb->createNamedParameter($uid),
-				'synced_at' => $qb->createNamedParameter(new \DateTime(), IQueryBuilder::PARAM_DATETIME_MUTABLE),
-			])
-			->executeStatement();
+		// Idempotent: unique (gid, uid) index would otherwise reject a re-add
+		// arriving via the real-time path for a membership the snapshot
+		// already knows about.
+		$this->db->insertIgnoreConflict('usersql_group_sync', [
+			'gid' => $gid,
+			'uid' => $uid,
+			'synced_at' => (new \DateTime())->format('Y-m-d H:i:s'),
+		]);
 	}
 
 	private function deleteSnapshot(string $gid, string $uid): void {
