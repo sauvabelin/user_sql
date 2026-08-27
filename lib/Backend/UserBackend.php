@@ -281,11 +281,11 @@ final class UserBackend extends ABackend implements
         $user = $this->getUser($uid);
 
         if (!($user instanceof User)) {
-            return false;
+            return $uid;
         }
 
         if (is_null($user->name)) {
-            return false;
+            return $uid;
         }
 
         $name = $user->name;

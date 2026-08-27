@@ -99,7 +99,7 @@ class EmailSync implements IUserAction
                 $this->config->setUserValue(
                     $user->uid, "settings", "email", $user->email
                 );
-                \OC::$server->getUserManager()->get($user->uid)->setEMailAddress($user->email);
+                \OC::$server->getUserManager()->get($user->uid)->setSystemEMailAddress($user->email);
             }
 
             $result = true;
@@ -121,7 +121,7 @@ class EmailSync implements IUserAction
                 $this->config->setUserValue(
                     $user->uid, "settings", "email", $user->email
                 );
-                \OC::$server->getUserManager()->get($user->uid)->setEMailAddress($user->email);
+                \OC::$server->getUserManager()->get($user->uid)->setSystemEMailAddress($user->email);
             }
 
             $result = true;

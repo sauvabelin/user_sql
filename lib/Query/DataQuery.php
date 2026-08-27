@@ -242,7 +242,7 @@ class DataQuery
             return false;
         }
 
-        return $result->fetchAll();
+        return $result->fetchAllAssociative();
     }
 
     /**
