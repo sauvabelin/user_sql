@@ -26,6 +26,7 @@ use Exception;
 use OC\DatabaseException;
 use OC\DB\Connection;
 use OC\DB\ConnectionFactory;
+use OC\SystemConfig;
 use OCA\UserSQL\Cache;
 use OCA\UserSQL\Constant\App;
 use OCA\UserSQL\Constant\DB;
@@ -157,7 +158,7 @@ class SettingsController extends Controller
         }
 
         $connectionFactory = new ConnectionFactory(
-            \OC::$server->getSystemConfig()
+            \OCP\Server::get(SystemConfig::class)
         );
 
         $parameters = [

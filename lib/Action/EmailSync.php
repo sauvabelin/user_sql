@@ -27,6 +27,7 @@ use OCA\UserSQL\Model\User;
 use OCA\UserSQL\Properties;
 use OCA\UserSQL\Repository\UserRepository;
 use OCP\IConfig;
+use OCP\IUserManager;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -99,7 +100,7 @@ class EmailSync implements IUserAction
                 $this->config->setUserValue(
                     $user->uid, "settings", "email", $user->email
                 );
-                \OC::$server->getUserManager()->get($user->uid)->setSystemEMailAddress($user->email);
+                \OCP\Server::get(IUserManager::class)->get($user->uid)->setSystemEMailAddress($user->email);
             }
 
             $result = true;
@@ -121,7 +122,7 @@ class EmailSync implements IUserAction
                 $this->config->setUserValue(
                     $user->uid, "settings", "email", $user->email
                 );
-                \OC::$server->getUserManager()->get($user->uid)->setSystemEMailAddress($user->email);
+                \OCP\Server::get(IUserManager::class)->get($user->uid)->setSystemEMailAddress($user->email);
             }
 
             $result = true;

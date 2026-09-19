@@ -27,6 +27,8 @@ use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
+use OCP\IGroupManager;
+use OCP\IUserManager;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -55,10 +57,10 @@ class Application extends App implements IBootstrap
             $groupBackend = $container->get(GroupBackend::class);
 
             if ($userBackend->isConfigured()) {
-                \OC::$server->getUserManager()->registerBackend($userBackend);
+                \OCP\Server::get(IUserManager::class)->registerBackend($userBackend);
             }
             if ($groupBackend->isConfigured()) {
-                \OC::$server->getGroupManager()->addBackend($groupBackend);
+                \OCP\Server::get(IGroupManager::class)->addBackend($groupBackend);
             }
         } catch (\Exception $e) {
             $container->get(LoggerInterface::class)->error(

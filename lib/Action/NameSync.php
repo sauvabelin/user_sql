@@ -27,6 +27,7 @@ use OCA\UserSQL\Model\User;
 use OCA\UserSQL\Properties;
 use OCA\UserSQL\Repository\UserRepository;
 use OCP\IConfig;
+use OCP\IUserManager;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -99,7 +100,7 @@ class NameSync implements IUserAction
                 $this->config->setUserValue(
                     $user->uid, "settings", "displayName", $user->name
                 );
-                \OC::$server->getUserManager()->get($user->uid)->setDisplayName($user->name);
+                \OCP\Server::get(IUserManager::class)->get($user->uid)->setDisplayName($user->name);
             }
 
             $result = true;
@@ -121,7 +122,7 @@ class NameSync implements IUserAction
                 $this->config->setUserValue(
                     $user->uid, "settings", "displayName", $user->name
                 );
-                \OC::$server->getUserManager()->get($user->uid)->setDisplayName($user->name);
+                \OCP\Server::get(IUserManager::class)->get($user->uid)->setDisplayName($user->name);
             }
 
             $result = true;

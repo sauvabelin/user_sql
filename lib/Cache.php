@@ -25,6 +25,7 @@ use OC\Memcache\NullCache;
 use OCA\UserSQL\Constant\App;
 use OCA\UserSQL\Constant\Opt;
 use OCP\ICache;
+use OCP\ICacheFactory;
 use OCP\IConfig;
 use Psr\Log\LoggerInterface;
 
@@ -50,7 +51,7 @@ class Cache
      */
     public function __construct($AppName, IConfig $config, LoggerInterface $logger)
     {
-        $factory = \OC::$server->getMemCacheFactory();
+        $factory = \OCP\Server::get(ICacheFactory::class);
         $useCache = $config->getAppValue(
             $AppName, Opt::USE_CACHE, App::FALSE_VALUE
         );

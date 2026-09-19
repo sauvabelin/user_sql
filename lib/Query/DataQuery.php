@@ -25,6 +25,7 @@ use Doctrine\DBAL\Driver\Statement;
 use Doctrine\DBAL\Exception as DBALException;
 use OC\DB\Connection;
 use OC\DB\ConnectionFactory;
+use OC\SystemConfig;
 use OCA\UserSQL\Constant\DB;
 use OCA\UserSQL\Constant\Query;
 use OCA\UserSQL\Properties;
@@ -143,7 +144,7 @@ class DataQuery
     private function connectToDatabase()
     {
         $connectionFactory = new ConnectionFactory(
-            \OC::$server->getSystemConfig()
+            \OCP\Server::get(SystemConfig::class)
         );
 
         $parameters = array(
