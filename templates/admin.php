@@ -77,7 +77,7 @@ function print_select_options(
 }
 
 ?>
-<form id="user_sql" action="#" method="post">
+<form id="user_sql">
     <div id="user_sql-msg" class="msg" style="display: none">
         <p id="user_sql-msg-body"></p>
     </div>
@@ -105,7 +105,7 @@ function print_select_options(
                 print_text_input($l, "db-ssl_key", "SSL Key", $_["db.ssl_key"]);
                 print_checkbox_input($l, "opt-safe_store", "System wide values", $_["opt.safe_store"]); ?>
                 <div class="button-right">
-                    <input type="submit" id="user_sql-db_connection_verify" value="<?php p($l->t("Verify settings")); ?>">
+                    <input type="button" id="user_sql-db_connection_verify" value="<?php p($l->t("Verify settings")); ?>">
                 </div>
             </fieldset>
         </div>
@@ -121,7 +121,7 @@ function print_select_options(
                 print_checkbox_input($l, "opt-reverse_active", "Reverse active column", $_["opt.reverse_active"]); ?>
                 <div class="button-right"><?php
                     print_checkbox_input($l, "opt-use_cache", "Use cache", $_["opt.use_cache"], false); ?>
-                    <input type="submit" id="user_sql-clear_cache" value="<?php p($l->t("Clear cache")); ?>">
+                    <input type="button" id="user_sql-clear_cache" value="<?php p($l->t("Clear cache")); ?>">
                 </div>
                 <?php
                 $hashes = [];
@@ -203,6 +203,6 @@ function print_select_options(
     <div class="section">
         <input type="hidden" name="appname" value="user_sql"/>
         <input type="hidden" name="requesttoken" value="<?php p($_["requesttoken"]); ?>" id="requesttoken"/>
-        <input id="user_sql-save" type="submit" value="<?php p($l->t("Save")); ?>"/>
+        <input id="user_sql-save" type="button" value="<?php p($l->t("Save")); ?>"/>
     </div>
 </form>

@@ -1,157 +1,180 @@
-var user_sql = user_sql || {};
-var form_id = "#user_sql";
+(function () {
+    "use strict";
 
-user_sql.adminSettingsUI = function () {
     var app_id = "user_sql";
 
-    if ($(form_id).length > 0) {
+    var postForm = function (form, path, extraParams) {
+        var body = new URLSearchParams(new FormData(form));
+        if (extraParams) {
+            Object.entries(extraParams).forEach(function (entry) {
+                body.set(entry[0], entry[1]);
+            });
+        }
+        return fetch(OC.generateUrl(path), {
+            method: "POST",
+            headers: {
+                requesttoken: OC.requestToken,
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: body
+        }).then(function (response) {
+            return response.json();
+        });
+    };
 
-        var click = function (event, path) {
-            event.preventDefault();
+    var debounce = function (fn, wait) {
+        var timer = null;
+        return function () {
+            window.clearTimeout(timer);
+            timer = window.setTimeout(fn, wait);
+        };
+    };
 
-            var post = $(form_id).serializeArray();
-            var msg = $("#user_sql-msg");
-            var msg_body = $("#user_sql-msg-body");
+    var setVisible = function (element, visible) {
+        element.style.display = visible ? "" : "none";
+    };
 
-            msg_body.html(t(app_id, "Waiting..."));
-            msg.addClass("waiting");
-            msg.slideDown();
+    var adminSettingsUI = function (form) {
+        var msg = document.getElementById("user_sql-msg");
+        var msg_body = document.getElementById("user_sql-msg-body");
+        var hideTimer = null;
 
-            $.post(OC.generateUrl(path), post, function (data) {
-                msg_body.html(data.data.message);
-                msg.removeClass("error");
-                msg.removeClass("success");
-                msg.removeClass("waiting");
+        var showMessage = function (state, text) {
+            msg.classList.remove("error", "success", "waiting");
+            msg.classList.add(state);
+            msg_body.textContent = text;
+            setVisible(msg, true);
+        };
 
-                if (data.status === "success") {
-                    msg.addClass("success");
-                } else {
-                    msg.addClass("error");
-                }
+        var click = function (path) {
+            window.clearTimeout(hideTimer);
+            showMessage("waiting", t(app_id, "Waiting..."));
 
-                window.setTimeout(function () {
-                    msg.slideUp();
+            postForm(form, path).then(function (data) {
+                showMessage(data.status === "success" ? "success" : "error", data.data.message);
+            }).catch(function () {
+                showMessage("error", t(app_id, "Request failed. Please reload the page and try again."));
+            }).then(function () {
+                hideTimer = window.setTimeout(function () {
+                    setVisible(msg, false);
                 }, 10000);
-            }, "json");
-
-            return false;
+            });
         };
 
         var autocomplete = function (ids, path) {
-            $(ids).autocomplete({
-                source: function (request, response) {
-                    var post = $(form_id).serializeArray();
-                    post.push({name: "input", value: request["term"]});
-                    $.post(OC.generateUrl(path), post, response, "json");
-                },
-                minLength: 0,
-                open: function () {
-                    $(this).attr("state", "open");
-                },
-                close: function () {
-                    $(this).attr("state", "closed");
-                }
-            }).focus(function () {
-                if ($(this).attr("state") !== "open") {
-                    $(this).autocomplete("search");
-                }
+            document.querySelectorAll(ids).forEach(function (input) {
+                var list = document.createElement("datalist");
+                list.id = input.id + "-options";
+                input.parentNode.appendChild(list);
+                input.setAttribute("list", list.id);
+
+                var refresh = function () {
+                    postForm(form, path, {input: input.value}).then(function (items) {
+                        list.replaceChildren();
+                        (items || []).forEach(function (item) {
+                            var option = document.createElement("option");
+                            option.value = item;
+                            list.appendChild(option);
+                        });
+                    }).catch(function () {
+                    });
+                };
+
+                input.addEventListener("focus", refresh);
+                input.addEventListener("input", debounce(refresh, 200));
             });
         };
 
         var cryptoParams = function () {
+            var cryptoClass = document.getElementById("opt-crypto_class");
+            var content = document.getElementById("opt-crypto_params_content");
+            var loading = document.getElementById("opt-crypto_params_loading");
+
             var cryptoChanged = function () {
-                var content = $("#opt-crypto_params_content");
-                var loading = $("#opt-crypto_params_loading");
+                setVisible(content, false);
+                setVisible(loading, true);
 
-                content.hide();
-                loading.show();
+                var url = OC.generateUrl("/apps/user_sql/settings/crypto/params")
+                    + "?" + new URLSearchParams({cryptoClass: cryptoClass.value});
 
-                $.get(OC.generateUrl("/apps/user_sql/settings/crypto/params"), {cryptoClass: $("#opt-crypto_class").val()},
-                    function (data) {
-                        content.empty();
-                        loading.hide();
+                fetch(url, {headers: {requesttoken: OC.requestToken}}).then(function (response) {
+                    return response.json();
+                }).then(function (data) {
+                    content.replaceChildren();
+                    setVisible(loading, false);
 
-                        if (data.status === "success") {
-                            for (var index = 0, length = data.data.length; index < length; ++index) {
-                                var param = $("<div></div>");
-                                var label = $("<label></label>").attr({for: "opt-crypto_param_" + index});
-                                var title = $("<span></span>").text(data.data[index]["name"]);
+                    if (data.status !== "success") {
+                        return;
+                    }
 
-                                var input = null;
-                                switch (data.data[index]["type"]) {
-                                    case "choice":
-                                        input = $("<select/>").attr({
-                                            id: "opt-crypto_param_" + index,
-                                            name: "opt-crypto_param_" + index,
-                                        });
-                                        data.data[index]["choices"].forEach(
-                                            function (item) {
-                                                if (data.data[index]["value"] === item) {
-                                                    input.append($("<option/>").attr({
-                                                        value: item,
-                                                        selected: "selected"
-                                                    }).text(item));
-                                                } else {
-                                                    input.append($("<option/>").attr({value: item}).text(item));
-                                                }
-                                            }
-                                        );
-                                        break;
-                                    case "int":
-                                        input = $("<input/>").attr({
-                                            type: "number",
-                                            id: "opt-crypto_param_" + index,
-                                            name: "opt-crypto_param_" + index,
-                                            step: 1,
-                                            min: data.data[index]["min"],
-                                            max: data.data[index]["max"],
-                                            value: data.data[index]["value"]
-                                        });
-                                        break;
-                                    default:
-                                        break;
-                                }
+                    data.data.forEach(function (param, index) {
+                        var id = "opt-crypto_param_" + index;
+                        var div = document.createElement("div");
+                        var label = document.createElement("label");
+                        var title = document.createElement("span");
+                        label.htmlFor = id;
+                        title.textContent = param["name"];
 
-                                label.append(title);
-                                param.append(label);
-                                param.append(input);
-                                content.append(param);
-                                content.show();
-                            }
+                        var input = null;
+                        switch (param["type"]) {
+                            case "choice":
+                                input = document.createElement("select");
+                                param["choices"].forEach(function (item) {
+                                    var option = document.createElement("option");
+                                    option.value = item;
+                                    option.textContent = item;
+                                    option.selected = param["value"] === item;
+                                    input.appendChild(option);
+                                });
+                                break;
+                            case "int":
+                                input = document.createElement("input");
+                                input.type = "number";
+                                input.step = 1;
+                                input.min = param["min"];
+                                input.max = param["max"];
+                                input.value = param["value"];
+                                break;
+                            default:
+                                break;
                         }
-                    }, "json");
+
+                        label.appendChild(title);
+                        div.appendChild(label);
+                        if (input !== null) {
+                            input.id = id;
+                            input.name = id;
+                            div.appendChild(input);
+                        }
+                        content.appendChild(div);
+                        setVisible(content, true);
+                    });
+                }).catch(function () {
+                    setVisible(loading, false);
+                });
             };
-            $("#opt-crypto_class").change(function () {
-                cryptoChanged();
-            });
+
+            cryptoClass.addEventListener("change", cryptoChanged);
             cryptoChanged();
         };
 
-        $("#db-driver").change(function () {
-            var ssl_ca = $("#db-ssl_ca").parent().parent();
-            var ssl_cert = $("#db-ssl_cert").parent().parent();
-            var ssl_key = $("#db-ssl_key").parent().parent();
-            if ($("#db-driver").val() === 'mysql') {
-                ssl_ca.show();
-                ssl_cert.show();
-                ssl_key.show();
-            } else {
-                ssl_ca.hide();
-                ssl_cert.hide();
-                ssl_key.hide();
-            }
+        document.getElementById("db-driver").addEventListener("change", function () {
+            var isMysql = this.value === "mysql";
+            ["db-ssl_ca", "db-ssl_cert", "db-ssl_key"].forEach(function (id) {
+                setVisible(document.getElementById(id).parentNode.parentNode, isMysql);
+            });
         });
 
-        $("#user_sql-db_connection_verify").click(function (event) {
-            return click(event, "/apps/user_sql/settings/db/verify");
+        document.getElementById("user_sql-db_connection_verify").addEventListener("click", function () {
+            click("/apps/user_sql/settings/db/verify");
         });
 
-        $("#user_sql-clear_cache").click(function (event) {
-            return click(event, "/apps/user_sql/settings/cache/clear");
+        document.getElementById("user_sql-clear_cache").addEventListener("click", function () {
+            click("/apps/user_sql/settings/cache/clear");
         });
 
-        $("#user_sql-save").click(function (event) {
-            return click(event, "/apps/user_sql/settings/properties");
+        document.getElementById("user_sql-save").addEventListener("click", function () {
+            click("/apps/user_sql/settings/properties");
         });
 
         autocomplete(
@@ -175,11 +198,18 @@ user_sql.adminSettingsUI = function () {
         );
 
         cryptoParams();
-    }
-};
+    };
 
-$(document).ready(function () {
-    if ($(form_id)) {
-        user_sql.adminSettingsUI();
+    var init = function () {
+        var form = document.getElementById("user_sql");
+        if (form !== null) {
+            adminSettingsUI(form);
+        }
+    };
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init);
+    } else {
+        init();
     }
-});
+})();

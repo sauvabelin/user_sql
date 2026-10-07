@@ -29,7 +29,7 @@
     overflow: auto;
 }
 
-#user_sql .main .button-right > input[type="submit"] {
+#user_sql .main .button-right > input[type="button"] {
     float: right;
 }
 
